@@ -1,0 +1,11 @@
+# deepresearchv2 依赖
+#
+# 这些都是运行必须的（缺 key 直接报错，不走 fallback）。
+#
+#   - 大模型调用：    pip install openai
+#   - 联网搜索：      pip install tavily-python
+#   - 流程编排：      pip install langgraph
+
+openai>=1.0
+tavily-python>=0.3
+langgraph>=0.2
