@@ -60,7 +60,7 @@ class SearchTool:
     """对外搜索的统一入口，内部走 Tavily。"""
 
     def __init__(self, tavily_api_key: str | None = None):
-        self.key = tavily_api_key or os.environ.get("TAVILY_API_KEY")
+        self.key = tavily_api_key or os.environ.get("TAVILY_API_KEY") or config.TAVILY_API_KEY
         if not self.key:
             raise RuntimeError(
                 "缺少 TAVILY_API_KEY。请先 `export TAVILY_API_KEY=tvly-xxx` 再启动。"

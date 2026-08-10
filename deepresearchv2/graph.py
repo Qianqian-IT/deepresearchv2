@@ -1,15 +1,18 @@
-"""LangGraph 编排：把 Planner + Researcher 的调研流程声明为状态图。
+"""LangGraph 编排：把 Planner + Researcher + Analyzer + ReportWriter 的调研流程声明为状态图。
 
 节点（每个节点只做一件事，全部读写共享的 ResearchState）：
   planner → 出研究计划（写 state.plan）
   think   → 看全局决定本轮：出搜索词（写 state.query / target_q）或收工
-             —— 唯一的决策者，收工判断 + 机械闸门都在这里
+            —— 唯一的决策者，收工判断 + 机械闸门都在这里
   act     → Tavily 搜索（写 state.results 瞬时、累积 state.all_results）
   observe → 筛选检索结果，保留有价值信息（追加 state.notes）
+  analyze → 收工后按子问题分析全部 findings（两段式：先筛相关，再深度分析）
+  report  → 消费 state.analysis，生成最终 markdown 调研报告（写 state.report）
 
 边：
-  planner → think →（条件边）→ act / END
+  planner → think →（条件边）→ act / analyze
   act → observe → think（回 think 判断下一轮）
+  analyze → report → END
 
 think 是唯一决策者，输出 SEARCH | 子问题序号 | 词 或 FINISH；
 两个机械闸门兜底（图级路由，零 LLM 成本）：
@@ -18,11 +21,12 @@ think 是唯一决策者，输出 SEARCH | 子问题序号 | 词 或 FINISH；
 覆盖判定（covered / gaps）全部机械计算：子问题计划词 q 是否出现在
 notes 的 target_q 里（think 出词时声明本轮服务哪个子问题）。
 
-产出 = state.all_results（检索结果）+ state.notes（筛选保留的有价值信息）+ state.gaps。
+产出 = state.all_results + state.notes + state.gaps + state.analysis + state.report。
 """
 
 from __future__ import annotations
 
+import json
 import operator
 from typing import Annotated, TypedDict
 
@@ -30,10 +34,12 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
 from . import config
+from .analyzer import Analyzer
 from .llm import LLMClient
 from .planner import Planner, ResearchPlan
+from .report_writer import ReportWriter
 from .researcher import Note, Researcher
-from .tools import TIER_LABEL, SearchResult, SearchTool
+from .tools import SearchResult, SearchTool
 
 
 # ============================================================
@@ -58,6 +64,8 @@ class ResearchState(TypedDict):
     steps: int                           # think 执行次数
     covered: bool                        # 机械判定：所有子问题都有发现支撑
     gaps: list[dict]                     # 机械生成：没有发现的子问题（产出）
+    analysis: dict[str, dict]            # analyze 节点产物：{搜索词: AnalysisResult}
+    report: str                          # report 节点产物：最终 markdown 调研报告
 
 
 def _gaps_of(uncovered: list) -> list[dict]:
@@ -178,50 +186,47 @@ def _act_node(search_tool: SearchTool, log) -> "callable":
     return node
 
 
-def _append_findings_md(query: str, notes: list[Note], results: list[SearchResult],
-                        target_q: str = "") -> None:
-    """把 observe 筛选保留的发现（fact + 信源 + 原始摘要）追加到 findings/research-findings.md。
+def _append_findings_json(query: str, notes: list[Note], results: list[SearchResult],
+                          target_q: str = "") -> None:
+    """把 observe 筛选保留的发现追加到 findings/research-findings.jsonl（JSONL 格式）。
 
-    增量追加：每次 observe 后立即落盘，中断也不丢；零 LLM 成本（摘要本来就在上下文里）。
-    文件头只在文件不存在时写入一次。
+    增量追加：每次 observe 后立即落盘，中断也不丢。每行一条 JSON 记录。
     """
     if not notes:
         return
     from pathlib import Path
 
-    path = Path("findings") / "research-findings.md"
+    path = Path("findings") / "research-findings.jsonl"
     path.parent.mkdir(parents=True, exist_ok=True)
     url2res = {r.url: r for r in results}
 
-    lines: list[str] = []
-    if not path.exists():
-        lines += [
-            "# 调研发现（research findings）",
-            "",
-            "> observe 筛选保留的发现：fact + 信源 + 原始摘要，按执行顺序追加。",
-            "",
-        ]
-    lines.append(f"## 搜索：{query}")
-    if target_q:
-        lines.append(f"服务子问题：{target_q}")
+    note_records = []
     for n in notes:
-        lines.append(f"- **发现**：{n.fact}")
+        sources_detail = []
         for i, url in enumerate(n.sources):
             r = url2res.get(url)
+            snippet = ""
             if r:
-                lines.append(
-                    f"  - 来源：{r.title} ｜ 信源：{TIER_LABEL.get(r.source_tier, '未知')} ｜ [{url}]({url})"
-                )
-                # 摘要优先用 Note 自带的（与来源一一对应），缺了再回退查结果
                 snippet = (n.snippets[i] if i < len(n.snippets) else r.snippet or "")
                 snippet = snippet.replace("\n", " ")
-                if snippet:
-                    lines.append(f"    - 摘要：{snippet}")
+                sources_detail.append({
+                    "url": url,
+                    "title": r.title,
+                    "source_tier": r.source_tier,
+                    "snippet": snippet,
+                })
             else:
-                lines.append(f"  - 来源：{url}")
-    lines.append("")
+                sources_detail.append({"url": url})
+        note_records.append({
+            "fact": n.fact,
+            "query": n.query,
+            "target_q": n.target_q,
+            "sources": sources_detail,
+        })
+
+    record = {"query": query, "target_q": target_q or None, "notes": note_records}
     with open(path, "a", encoding="utf-8") as f:
-        f.write("\n".join(lines) + "\n")
+        f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
 def _observe_node(researcher: Researcher, log) -> "callable":
@@ -234,12 +239,119 @@ def _observe_node(researcher: Researcher, log) -> "callable":
             log(f"[observe] 保留: {n.fact[:60]}")
         if not new_notes:
             log("[observe] 本轮无有价值信息，全部过滤")
-        # 筛选保留的发现（fact + 信源 + 摘要）增量落盘 findings/research-findings.md
-        _append_findings_md(state["query"], new_notes, state["results"], state.get("target_q", ""))
+        # 筛选保留的发现增量落盘 findings/research-findings.jsonl
+        _append_findings_json(state["query"], new_notes, state["results"], state.get("target_q", ""))
         # 每次 observe 的完整记录都进 state.observations，落盘时一条不丢
         record = {"query": state["query"], "notes": new_notes}
         return {"notes": new_notes, "observations": [record]}
     return node
+
+
+def _analyze_node(analyzer: Analyzer, log) -> "callable":
+    def node(state: ResearchState) -> dict:
+        """收工后：对每个子问题的发现做两段式深度分析。"""
+        plan = state["plan"]
+        notes = state["notes"]
+        if not notes:
+            log("[analyze] 无发现，跳过分析")
+            return {"analysis": {}}
+
+        log(f"[analyze] 开始分析 {len(plan.questions)} 个子问题（{len(notes)} 条发现）...")
+        results = analyzer.analyze(state["goal"], plan, notes)
+
+        # 转成可序列化 dict 存进 state
+        serialized: dict[str, dict] = {}
+        for q_key, ar in results.items():
+            serialized[q_key] = {
+                "sub_question": ar.sub_question,
+                "search_term": ar.search_term,
+                "relevant_facts": ar.relevant_facts,
+                "irrelevant_facts": ar.irrelevant_facts,
+                "merged_insights": ar.merged_insights,
+                "conflicts": ar.conflicts,
+                "supports_each_other": ar.supports_each_other,
+                "direct_evidence": ar.direct_evidence,
+                "inferred_analysis": ar.inferred_analysis,
+                "unsupported": ar.unsupported,
+                "missing_info": ar.missing_info,
+            }
+            rel = len(ar.relevant_facts)
+            total = rel + len(ar.irrelevant_facts)
+            log(
+                f"[analyze] {ar.search_term}: "
+                f"{rel}/{total} 相关, {len(ar.merged_insights)} 洞察, "
+                f"{len(ar.conflicts)} 冲突, {len(ar.missing_info)} 缺口"
+            )
+
+        return {"analysis": serialized}
+    return node
+
+
+def _report_node(writer: ReportWriter, log) -> "callable":
+    def node(state: ResearchState) -> dict:
+        """消费 state.analysis + state.plan + state.goal，生成最终报告。"""
+        analysis = state.get("analysis", {})
+        if not analysis:
+            log("[report] 无分析结果，跳过报告生成")
+            return {"report": writer._empty_report(state["goal"])}
+
+        plan_raw = state["plan"]
+        # ResearchPlan → dict
+        plan_dict = {
+            "topic": plan_raw.topic if hasattr(plan_raw, "topic") else "",
+            "sub_questions": [
+                {"question": pq.question, "q": pq.q}
+                for pq in plan_raw.questions
+            ] if plan_raw and hasattr(plan_raw, "questions") else [],
+        }
+
+        log("[report] 正在生成最终调研报告...")
+        report_md = writer.write(state["goal"], plan_dict, analysis)
+        # 追加附录：分析覆盖度、原始发现
+        appendix = _build_appendix(state)
+        report_md = report_md.rstrip() + "\n\n" + appendix
+        log("[report] 报告生成完成")
+        return {"report": report_md}
+    return node
+
+
+def _build_appendix(state: ResearchState) -> str:
+    """构建报告附录：原始发现 + 检索统计 + 覆盖率。"""
+    parts: list[str] = []
+    notes: list = state.get("notes", [])  # type: ignore[assignment]
+
+    # 检索统计
+    parts.append("---\n")
+    parts.append("## 附录 A：检索统计\n")
+    parts.append(f"- 搜索次数: {state.get('searches', 0)}")
+    parts.append(f"- 执行步数: {state.get('steps', 0)}")
+    parts.append(f"- 有效发现: {len(notes)} 条")
+    parts.append(f"- 覆盖率: {'全部覆盖' if state.get('covered') else '部分覆盖'}\n")
+
+    # 缺口
+    gaps = state.get("gaps", [])
+    if gaps:
+        parts.append("### 数据缺口\n")
+        for g in gaps:
+            parts.append(f"- **{g.get('question', g)}**: {g.get('why', '')}")
+        parts.append("")
+
+    # 全部发现
+    if notes:
+        parts.append("## 附录 B：全部原始发现\n")
+        # 按 target_q 分组
+        groups: dict[str, list] = {}
+        for n in notes:
+            k = getattr(n, "target_q", "") or "(未归类)"
+            groups.setdefault(k, []).append(n)
+        for tq, ns in groups.items():
+            parts.append(f"### {tq}\n")
+            for n in ns:
+                fact = getattr(n, "fact", "")
+                parts.append(f"- {fact}")
+            parts.append("")
+
+    return "\n".join(parts)
 
 
 # ============================================================
@@ -247,8 +359,8 @@ def _observe_node(researcher: Researcher, log) -> "callable":
 # ============================================================
 
 def _route_after_think(state: ResearchState) -> str:
-    """think 的条件路由：收工（done）→ END，否则 → act 继续搜。"""
-    return END if state["done"] else "act"
+    """think 的条件路由：收工（done）→ analyze，否则 → act 继续搜。"""
+    return "analyze" if state["done"] else "act"
 
 
 # ============================================================
@@ -261,11 +373,15 @@ def build_research_graph(
     *,
     planner: Planner | None = None,
     researcher: Researcher | None = None,
+    analyzer: Analyzer | None = None,
+    report_writer: ReportWriter | None = None,
     verbose: bool = True,
 ) -> CompiledStateGraph:
-    """组装并编译完整的调研图：planner → think ↔ (act → observe)，覆盖或预算用尽即 END。"""
+    """组装并编译完整的调研图：planner → think ↔ (act → observe)，覆盖后 → analyze → report → END。"""
     planner = planner or Planner(llm)
     researcher = researcher or Researcher(llm, verbose=verbose)
+    analyzer = analyzer or Analyzer(llm)
+    report_writer = report_writer or ReportWriter(llm)
     log = (lambda msg: print(msg)) if verbose else (lambda msg: None)
 
     g = StateGraph(ResearchState)
@@ -273,12 +389,16 @@ def build_research_graph(
     g.add_node("think", _think_node(researcher, log))
     g.add_node("act", _act_node(search_tool, log))
     g.add_node("observe", _observe_node(researcher, log))
+    g.add_node("analyze", _analyze_node(analyzer, log))
+    g.add_node("report", _report_node(report_writer, log))
 
     g.add_edge(START, "planner")
     g.add_edge("planner", "think")
-    g.add_conditional_edges("think", _route_after_think, {"act": "act", END: END})
+    g.add_conditional_edges("think", _route_after_think, {"act": "act", "analyze": "analyze"})
     g.add_edge("act", "observe")
     g.add_edge("observe", "think")
+    g.add_edge("analyze", "report")
+    g.add_edge("report", END)
 
     return g.compile()
 
@@ -300,4 +420,6 @@ def initial_state(goal: str) -> dict:
         "steps": 0,
         "covered": False,
         "gaps": [],
+        "analysis": {},
+        "report": "",
     }

@@ -34,12 +34,17 @@ LLM_PROVIDER = "deepseek"
 LLM_TEMPERATURE = 0.2        # 调研类任务要低温度，减少幻觉
 
 # DeepSeek（OpenAI 兼容协议）
-# 这里只放"环境变量名"，真正的 key 通过 `export DEEPSEEK_API_KEY=xxx` 提供。
+# key 优先取环境变量，环境变量没设时用下方直接写死的值（方便本地调试）
 DEEPSEEK_API_KEY_ENV = "DEEPSEEK_API_KEY"
+DEEPSEEK_API_KEY = "sk-61ab2eb088b34e4abc59639b1d98c178"              # 直接填 key，例如 "sk-xxxxxxxxxxxxxxxx"
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"
-DEEPSEEK_MODEL = "deepseek-chat"   # V3 对外的对话模型；如用 V4 可改为 "deepseek-v4-flash"
+DEEPSEEK_MODEL = "deepseek-v4-pro"   # V3 对外的对话模型；如用 V4 可改为 "deepseek-v4-flash"
 
 # OpenAI（备用）
 OPENAI_API_KEY_ENV = "OPENAI_API_KEY"
+OPENAI_API_KEY = ""                # 直接填 key，例如 "sk-xxxxxxxxxxxxxxxx"
 OPENAI_BASE_URL = "https://api.openai.com/v1"
 OPENAI_MODEL = "gpt-4o-mini"
+
+# Tavily 联网搜索
+TAVILY_API_KEY = "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"                # 直接填 key，例如 "tvly-xxxxxxxxxxxxxxxx"

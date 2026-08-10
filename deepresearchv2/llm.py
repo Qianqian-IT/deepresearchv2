@@ -51,13 +51,13 @@ class LLMClient:
         if provider == "deepseek":
             return {
                 "model": model or config.DEEPSEEK_MODEL,
-                "api_key": api_key or os.environ.get(config.DEEPSEEK_API_KEY_ENV),
+                "api_key": api_key or os.environ.get(config.DEEPSEEK_API_KEY_ENV) or config.DEEPSEEK_API_KEY,
                 "base_url": base_url or config.DEEPSEEK_BASE_URL,
             }
         if provider == "openai":
             return {
                 "model": model or config.OPENAI_MODEL,
-                "api_key": api_key or os.environ.get(config.OPENAI_API_KEY_ENV),
+                "api_key": api_key or os.environ.get(config.OPENAI_API_KEY_ENV) or config.OPENAI_API_KEY,
                 "base_url": base_url or config.OPENAI_BASE_URL,
             }
         raise ValueError(

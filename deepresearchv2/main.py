@@ -25,8 +25,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from deepresearchv2 import (
     Clarifier, LLMClient, SearchTool, build_research_graph, initial_state,
 )
-from deepresearchv2.planner import AnalysisTask, Planner
-from deepresearchv2.tools import TIER_LABEL
 
 
 def main() -> int:
@@ -74,14 +72,6 @@ def main() -> int:
     print(f"📋 研究计划（主题：{plan.topic}）")
     for i, q in enumerate(plan.questions, 1):
         print(f"   {i}. 子问题: {q.question}  q={q.q!r}")
-
-    # analyze 大纲：planner 读完整发现（fact + 来源 + 摘要）规划 analyze 的任务清单
-    # （analyze 节点未实现，先把规划结果展示出来，并随报告落盘）
-    analysis_tasks = Planner(llm).plan_analysis(goal, plan, final["notes"])
-    final["analysis_tasks"] = analysis_tasks  # 渲染进报告，--save 的文件里也有记录
-    print()
-    print("📋 analyze 大纲（规划的分析任务）：")
-    print(render_analysis_plan(analysis_tasks))
 
     # 产出：渲染成 Markdown（结论 + 对应来源）
     report_md = render_report(final)
@@ -141,30 +131,23 @@ def main() -> int:
     return 0
 
 
-def render_analysis_plan(tasks: list[AnalysisTask]) -> str:
-    """把 analyze 任务清单渲染成可读文本。"""
-    lines: list[str] = []
-    for i, t in enumerate(tasks, 1):
-        lines.append(f"{i}. [{t.analysis_type or '分析'}] {t.question or t.analysis_goal}")
-        if t.analysis_goal:
-            lines.append(f"   目标：{t.analysis_goal}")
-        if t.evidence:
-            lines.append(f"   证据：{', '.join(t.evidence)}")
-        if t.output:
-            lines.append(f"   产出：{t.output}")
-    return "\n".join(lines) or "（planner 没有规划出分析任务）"
-
-
 def render_report(final: dict) -> str:
     """把最终 state 渲染成 Markdown。
 
-    结构：主题 → 研究计划（子问题+搜索词）→ 调研结论（按 query 分组，
-    每条结论带来源链接）→ 观察记录（每次 observe 的完整记录，按执行顺序）
-    → 子问题覆盖情况（每个子问题搜了几次、发现几条、有无缺口）
-    → 未覆盖缺口 → 全部检索结果 → 统计。
+    report 节点已生成完整报告（含附录），直接使用；仅在无报告时回退到手动渲染。
     """
+    report = final.get("report", "")
+    if report:
+        return report
+    # 回退：手动拼接（report 节点未生成报告时）
+    return _render_report_fallback(final)
+
+
+def _render_report_fallback(final: dict) -> str:
+    """手动渲染 Markdown（report 节点未产出时的回退方案）。"""
     plan = final["plan"]
     url_title = {r.url: r.title for r in final["all_results"]}
+    from deepresearchv2.tools import TIER_LABEL
 
     lines = [f"# {plan.topic}", ""]
     lines.append(f"> 调研目标：{final['goal'].strip()}")
@@ -174,21 +157,6 @@ def render_report(final: dict) -> str:
         lines.append(f"{i}. {q.question}")
         lines.append(f"   - 搜索词：`{q.q}`")
     lines.append("")
-
-    # analyze 大纲：planner 基于发现规划的分析任务清单（有才渲染）
-    tasks = final.get("analysis_tasks") or []
-    if tasks:
-        lines.append("## analyze 大纲")
-        lines.append("> planner 基于研究发现（fact + 来源 + 摘要）规划的分析任务清单")
-        for i, t in enumerate(tasks, 1):
-            lines.append(f"{i}. **[{t.analysis_type or '分析'}]** {t.question or t.analysis_goal}")
-            if t.analysis_goal:
-                lines.append(f"   - 目标：{t.analysis_goal}")
-            if t.evidence:
-                lines.append(f"   - 证据：{', '.join(t.evidence)}")
-            if t.output:
-                lines.append(f"   - 产出：{t.output}")
-        lines.append("")
 
     lines.append("## 调研结论")
     notes_by_query: dict[str, list] = {}
@@ -209,66 +177,35 @@ def render_report(final: dict) -> str:
             lines.append("- （本次搜索无相关发现）")
         lines.append("")
 
-    # 观察记录：每次 observe 的完整记录，按执行顺序，一条不丢
-    lines.append("## 观察记录")
-    lines.append("> Researcher 每次 observe 的完整记录（结论 + 来源，按执行顺序，一条不丢）")
-    for i, obs in enumerate(final.get("observations", []), 1):
-        lines.append(f"### 第 {i} 次搜索：{obs.get('query')}")
-        obs_notes = obs.get("notes") or []
-        if not obs_notes:
-            lines.append("- （该次搜索未归纳出发现）")
-        for n in obs_notes:
-            lines.append(f"- **发现**：{n.fact}")
-            for url in n.sources:
-                lines.append(f"  - 来源：[{url_title.get(url, url)}]({url})")
-        lines.append("")
-
-    # 每个子问题的搜索/发现/覆盖情况：直接搜索 = 完全按计划词搜的次数；
-    # think 自由发挥的补充搜索词无法可靠归属到单一子问题，计入统计里的"补充"。
-    lines.append("## 子问题覆盖情况")
-    for i, pq in enumerate(plan.questions, 1):
-        direct = sum(1 for q in final["done_queries"] if q == pq.q)
-        # 归属用 think 声明服务的子问题 target_q：think 自由补充的词也能计入它服务的子问题
-        found = sum(1 for n in final["notes"] if n.target_q == pq.q)
-        gap = any(g.get("question") == pq.question for g in final["gaps"])
-        status = "❌ 缺口" if gap else "✅ 已覆盖"
-        lines.append(f"{i}. {pq.question}")
-        lines.append(
-            f"   - 搜索词：`{pq.q}` ｜ 直接搜索 {direct} 次 ｜ 发现 {found} 条 ｜ {status}"
-        )
-    lines.append("")
-
-    if final["gaps"]:
-        lines.append("## 未覆盖缺口")
-        for g in final["gaps"]:
-            lines.append(f"- **{g.get('question')}**：还缺 {g.get('why')}")
-        lines.append("")
-
-    lines.append("## 全部检索结果")
-    seen_results: set[str] = set()
-    for r in final["all_results"]:
-        if r.url in seen_results:
-            continue
-        seen_results.add(r.url)
-        snippet = (r.snippet or "").replace("\n", " ")
-        lines.append(f"- **{r.title}**")
-        lines.append(f"  - URL：{r.url}")
-        lines.append(f"  - 搜索词：{r.query_origin}")
-        lines.append(f"  - 信源：{TIER_LABEL.get(r.source_tier, '未知')}")
-        lines.append(f"  - 摘要：{snippet}")
-    lines.append("")
+    analysis = final.get("analysis") or {}
+    if analysis:
+        lines.append("## 分析报告")
+        for pq in plan.questions:
+            ar = analysis.get(pq.q, {})
+            if not ar:
+                continue
+            lines.append(f"### {ar.get('sub_question') or pq.question}")
+            merged = ar.get("merged_insights") or []
+            if merged:
+                lines.append("**综合洞察**")
+                for item in merged:
+                    lines.append(f"- {item}")
+            conflicts = ar.get("conflicts") or []
+            if conflicts:
+                lines.append("**⚠️ 冲突点**")
+                for item in conflicts:
+                    lines.append(f"- {item}")
+            missing = ar.get("missing_info") or []
+            if missing:
+                lines.append("**仍缺少的信息**")
+                for item in missing:
+                    lines.append(f"- {item}")
+            lines.append("")
 
     lines.append("## 统计")
     lines.append(
-        f"ReAct {final['steps']} 步 ｜ 搜索 {final['searches']} 次 ｜ "
-        f"结果 {len(final['all_results'])} 条 ｜ 发现 {len(final['notes'])} 条"
-    )
-    direct_total = sum(
-        1 for pq in plan.questions for q in final["done_queries"] if q == pq.q
-    )
-    lines.append(
-        f"计划词直接命中 {direct_total} 次 ｜ "
-        f"think 自由补充 {len(final['done_queries']) - direct_total} 次"
+        f"ReAct {final['steps']} 步 | 搜索 {final['searches']} 次 | "
+        f"结果 {len(final['all_results'])} 条 | 发现 {len(final['notes'])} 条"
     )
     return "\n".join(lines)
 
