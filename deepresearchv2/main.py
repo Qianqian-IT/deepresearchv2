@@ -13,9 +13,11 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 import textwrap
+from dataclasses import asdict
 
 # 保证从仓库任意目录 `python3 deepresearchv2/main.py` 都能 import 到包
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -23,6 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from deepresearchv2 import (
     Clarifier, LLMClient, SearchTool, build_research_graph, initial_state,
 )
+from deepresearchv2.planner import AnalysisTask, Planner
 from deepresearchv2.tools import TIER_LABEL
 
 
@@ -72,6 +75,14 @@ def main() -> int:
     for i, q in enumerate(plan.questions, 1):
         print(f"   {i}. 子问题: {q.question}  q={q.q!r}")
 
+    # analyze 大纲：planner 读完整发现（fact + 来源 + 摘要）规划 analyze 的任务清单
+    # （analyze 节点未实现，先把规划结果展示出来，并随报告落盘）
+    analysis_tasks = Planner(llm).plan_analysis(goal, plan, final["notes"])
+    final["analysis_tasks"] = analysis_tasks  # 渲染进报告，--save 的文件里也有记录
+    print()
+    print("📋 analyze 大纲（规划的分析任务）：")
+    print(render_analysis_plan(analysis_tasks))
+
     # 产出：渲染成 Markdown（结论 + 对应来源）
     report_md = render_report(final)
     print()
@@ -93,7 +104,55 @@ def main() -> int:
             f.write(report_md)
         print(f"💾 Markdown 报告已保存到：{args.save}")
 
+        # 同时保存原始 observations（每次搜索 + 筛选保留的 Note），
+        # 与报告同目录：out.md → out.observations.json，方便二次处理
+        obs_path = args.save.rsplit(".", 1)[0] + ".observations.json"
+        with open(obs_path, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "goal": final["goal"],
+                    "plan": {
+                        "topic": plan.topic,
+                        "questions": [
+                            {
+                                "question": pq.question,
+                                "q": pq.q,
+                                "domains": pq.domains,
+                            }
+                            for pq in plan.questions
+                        ],
+                    },
+                    "observations": [
+                        {
+                            "query": obs["query"],
+                            "notes": [asdict(n) for n in obs["notes"]],
+                        }
+                        for obs in final["observations"]
+                    ],
+                    "searches": final["searches"],
+                    "steps": final["steps"],
+                },
+                f,
+                ensure_ascii=False,
+                indent=2,
+            )
+        print(f"💾 原始 observations 已保存到：{obs_path}")
+
     return 0
+
+
+def render_analysis_plan(tasks: list[AnalysisTask]) -> str:
+    """把 analyze 任务清单渲染成可读文本。"""
+    lines: list[str] = []
+    for i, t in enumerate(tasks, 1):
+        lines.append(f"{i}. [{t.analysis_type or '分析'}] {t.question or t.analysis_goal}")
+        if t.analysis_goal:
+            lines.append(f"   目标：{t.analysis_goal}")
+        if t.evidence:
+            lines.append(f"   证据：{', '.join(t.evidence)}")
+        if t.output:
+            lines.append(f"   产出：{t.output}")
+    return "\n".join(lines) or "（planner 没有规划出分析任务）"
 
 
 def render_report(final: dict) -> str:
@@ -115,6 +174,21 @@ def render_report(final: dict) -> str:
         lines.append(f"{i}. {q.question}")
         lines.append(f"   - 搜索词：`{q.q}`")
     lines.append("")
+
+    # analyze 大纲：planner 基于发现规划的分析任务清单（有才渲染）
+    tasks = final.get("analysis_tasks") or []
+    if tasks:
+        lines.append("## analyze 大纲")
+        lines.append("> planner 基于研究发现（fact + 来源 + 摘要）规划的分析任务清单")
+        for i, t in enumerate(tasks, 1):
+            lines.append(f"{i}. **[{t.analysis_type or '分析'}]** {t.question or t.analysis_goal}")
+            if t.analysis_goal:
+                lines.append(f"   - 目标：{t.analysis_goal}")
+            if t.evidence:
+                lines.append(f"   - 证据：{', '.join(t.evidence)}")
+            if t.output:
+                lines.append(f"   - 产出：{t.output}")
+        lines.append("")
 
     lines.append("## 调研结论")
     notes_by_query: dict[str, list] = {}

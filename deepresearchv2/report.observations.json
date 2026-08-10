@@ -1,0 +1,477 @@
+{
+  "goal": "Agent评测框架",
+  "plan": {
+    "topic": "Agent评测框架的现状、方法与能力缺口研究",
+    "questions": [
+      {
+        "question": "当前主流的Agent评测框架有哪些，它们各自的核心评测维度和方法是什么？",
+        "q": "Agent evaluation framework benchmark survey 2025 2026",
+        "domains": [
+          "arxiv.org",
+          "github.com"
+        ]
+      },
+      {
+        "question": "Agent评测框架在评测复杂任务（如多步推理、工具调用、长程规划）时存在哪些已知的能力缺口或局限性？",
+        "q": "Agent evaluation limitations gaps complex tasks tool use planning 2025",
+        "domains": [
+          "arxiv.org",
+          "github.com"
+        ]
+      },
+      {
+        "question": "针对Agent评测，业界是否有公认的基准测试集或排行榜，其更新频率和覆盖场景如何？",
+        "q": "Agent benchmark leaderboard 2025 2026 update coverage",
+        "domains": []
+      },
+      {
+        "question": "Agent评测框架如何评估Agent的鲁棒性、安全性和对抗性攻击下的表现？",
+        "q": "Agent evaluation robustness safety adversarial attacks benchmark 2025",
+        "domains": [
+          "arxiv.org"
+        ]
+      },
+      {
+        "question": "在真实业务或生产环境中，Agent评测框架如何落地，是否有从离线评测到在线评测的实践案例或方法论？",
+        "q": "Agent evaluation production online offline practice case study 2025",
+        "domains": []
+      },
+      {
+        "question": "Agent评测框架的未来发展趋势是什么，例如自适应评测、自动化生成评测任务或跨模态评测？",
+        "q": "Agent evaluation future trends adaptive automated generation cross-modal 2026",
+        "domains": [
+          "arxiv.org"
+        ]
+      }
+    ]
+  },
+  "observations": [
+    {
+      "query": "Agent evaluation framework benchmark survey 2025 2026",
+      "notes": [
+        {
+          "fact": "A Survey on Evaluation of LLM-based Agents（arXiv:2503.16416）为ACL Findings论文，综述LLM智能体评估，指出WebArena是动态环境Web智能体领先基准，截至2026年4月19日顶级性能已更新",
+          "sources": [
+            "https://arxiv.org/html/2503.16416v2"
+          ],
+          "snippets": [
+            "### E.1 Web Agents\n\nThe choice of benchmark in this domain depends heavily on the environment’s dynamicity and the agent’s modality.\n\nDynamic Interaction: WebArena remains the leading option for agents operating in dynamic environments. We note that as of April 19, 2026, top performance has reached 74.3%, based on a submission from February 2026, suggesting there is still room for improvement.\n\nStatic Evaluation: For offline evaluation using cached traces, Mind2Web remains the standard. [...] To better reflect real-world scenarios, recent evaluations have become increasingly agentic Patil et al. (2025b: from tool use to agentic evaluation of large language models\")), requiring longer interactions and scaling the number of domains and tools by sourcing them from real MCP servers Anthropic (Nov 2024). Two current frontier benchmarks, Scale’s MCP Atlas Bandi et al. (2026) and Tool-Decathlon Li et al. (2026), further push in this direction. Despite significant model advancements, these [...] Yet, this approach does not support the same agent harness evaluation across any benchmark environment. Harbor and Exgentic aim to solve that by providing frameworks with a unified protocol for general agent assessment Harbor Framework Team (2026); Bandel et al. (2026a).\nThese represent the first steps toward holistic, standardized, cross-environment agent evaluation Lacoste et al. (2026)."
+          ],
+          "query": "Agent evaluation framework benchmark survey 2025 2026",
+          "target_q": "Agent evaluation framework benchmark survey 2025 2026"
+        },
+        {
+          "fact": "GitHub仓库Asaf-Yehudai/LLM-Agent-Evaluation-Survey收录HAL Holistic Agent Leaderboard 2025、PerspectiveGap多智能体编排提示基准（arXiv 2026）、Online-Mind2Web（arXiv 2025）、BrowseComp等智能体评估基准",
+          "sources": [
+            "https://github.com/Asaf-Yehudai/LLM-Agent-Evaluation-Survey"
+          ],
+          "snippets": [
+            "HAL: Holistic Agent Leaderboard, HAL leaderboard 2025 (\n PerspectiveGap: A Benchmark for Multi-Agent Orchestration Prompting, arXiv 2026 ( [...] Online-Mind2Web:An Illusion of Progress? Assessing the Current State of Web Agents, arXiv 2025 (\n BrowseComp: A Simple Yet Challenging Benchmark for Browsing Agents, arXiv 2025 (\n Mind2Web 2: Evaluating Agentic Search with Agent-as-a-Judge, arXiv 2025 (\n ClawBench: Can AI Agents Complete Everyday Online Tasks?, arXiv 2026 ( ( ( [...] AgentHarm: A Benchmark for Measuring Harmfulness of LLM Agents, ICLR 2025 (\n ST-WebAgentBench: A Benchmark for Evaluating Safety and Trustworthiness in Web Agents, ICLR 2025 (\n Multi-Agent Risks from Advanced AI, arXiv 2025 (\n Evaluating Cultural and Social Awareness of LLM Web Agents, NAACL-findings 2025 (\n Breaking ReAct Agents: Foot-in-the-Door Attack Will Get You In, NAACL 2025 (\n\n## ➕ Adding a Benchmark / Paper"
+          ],
+          "query": "Agent evaluation framework benchmark survey 2025 2026",
+          "target_q": "Agent evaluation framework benchmark survey 2025 2026"
+        },
+        {
+          "fact": "arXiv:2602.18998评估10个前沿语言模型（含Qwen3-235B、DeepSeek-R1、Qwen3-Next）的通用LLM智能体测试时扩展（Test-Time Scaling）表现",
+          "sources": [
+            "https://arxiv.org/html/2602.18998v1"
+          ],
+          "snippets": [
+            "Our evaluation covers a total of ten frontier language models. Among open-source models, we include several high-performing systems such as Qwen3-235B (Yang et al., 2025) and DeepSeek-R1 (Guo et al., 2025), as well as more recent models with novel attention mechanisms, including Qwen3-Next (Qwen Team, Alibaba Inc., 2025) and DeepSeek-v3.2 (Liu et al., 2025). For proprietary models, we consider both efficiency-oriented variants (e.g., Gemini 2.5 Flash (Comanici et al., 2025)) and models [...] For the tool-use domain, we include tasks from Tau2-Bench(Barres et al., 2025) and MCP-Bench(Wang et al., 2025b), both of which provide extensive tool suites for evaluating a model’s ability to understand, select, and invoke the appropriate tool to solve a problem. Tau2-Bench focuses on customer-service scenarios, where the model acts as a customer-support agent responding to simulated user queries using a set of synthetic tools tailored to the scenario. MCP-Bench, in contrast, offers a [...] Our attention analysis is conducted on inference trajectories collected from General AgentBench. For each benchmark domain, we randomly sample 25 trajectories generated by the model under analysis. Because attention patterns depend strongly on the specific text region being examined, we follow the framework of Jin et al. (2025) to extract reasoning-behavior sentences from each trajectory. These sentences correspond to critical decision-making steps, where the model actively reasons over"
+          ],
+          "query": "Agent evaluation framework benchmark survey 2025 2026",
+          "target_q": "Agent evaluation framework benchmark survey 2025 2026"
+        },
+        {
+          "fact": "A Survey on Agent-as-a-Judge（arXiv:2601.05111）综述智能体作为评判者的评估范式，该范式支持高自主性、运行中动态合成评估标准并更新记忆，开启自适应评估新方向",
+          "sources": [
+            "https://arxiv.org/html/2601.05111v1"
+          ],
+          "snippets": [
+            "represents the cutting edge of the field, characterized by high autonomy and the ability to refine internal components during operation—synthesizing evaluation rubrics on-the-fly [wadhwa2025EvalAgents] and updating memory with lessons learned. This paradigm opens new frontiers for adaptive evaluation systems, though challenges remain in ensuring stability during self-modification [gao2025self-evolving-agent-survey].\n\n## 3 Methodologies [...] Conversely, Evaluation Agent [zhang2025EvaluationAgent] introduces dynamic multi-round planning, where agents adjust strategies based on intermediate feedback. This system further optimizes efficiency through autonomous termination, allowing the agent to self-monitor information gain and proactively halt execution once sufficient evidence is gathered. [...] In the multimodal and vision domain, Agent-as-a-Judge shifts from static scoring to interactive inspection.\nFor visual generation, CIGEval [wang-etal-2025-unified] orchestrates specialized tools to probe control adherence and subject consistency, while Evaluation Agent [zhang2025EvaluationAgent] runs multi-round checks to provide user-tailored, explainable analyses."
+          ],
+          "query": "Agent evaluation framework benchmark survey 2025 2026",
+          "target_q": "Agent evaluation framework benchmark survey 2025 2026"
+        }
+      ]
+    },
+    {
+      "query": "Agent evaluation limitations gaps complex tasks tool use planning 2025",
+      "notes": [
+        {
+          "fact": "MCPAgentBench是评估LLM智能体MCP工具使用的真实世界任务基准，覆盖MCP工具调用场景",
+          "sources": [
+            "https://arxiv.org/html/2512.24565"
+          ],
+          "snippets": [
+            "threats, and future research directions\")); Ehtesham et al. (2025, agent communication protocol (acp), agent-to-agent protocol (a2a), and agent network protocol (anp)\")); Lumer et al. (2025) currently represents a crucial exploration aimed at unifying the interaction modality between Agents and external tools, defining a standard format for tool invocation. Agent utilization of MCP tools becomes a key approach for solving complex, real-world tasks. Consequently, establishing a comprehensive [...] However, existing MCP capability assessment benchmarks Luo et al. (2025); Gao et al. (2025); Fan et al. (2025) suffer from several significant limitations. Firstly, a stability and dependency issue exists, as current benchmarks often rely on real, remote MCP servers, where service stability and availability heavily impact the reproducibility of testing results. Secondly, these benchmarks exhibit insufficient difficulty awareness, performing only simple task categorization and lacking granular [...] differences in handling complex, multi-step tool invocations. All code is open-source at Github (2025)."
+          ],
+          "query": "Agent evaluation limitations gaps complex tasks tool use planning 2025",
+          "target_q": "Agent evaluation limitations gaps complex tasks tool use planning 2025"
+        },
+        {
+          "fact": "GeoAgentBench是面向空间分析工具增强智能体的动态执行基准，对比ToolBench、API-Bank等通用API调用基准",
+          "sources": [
+            "https://arxiv.org/html/2604.13888"
+          ],
+          "snippets": [
+            "academic community have yielded several relevant evaluation benchmarks—such as ToolBench(Qin et al., 2024) and API-Bank (Li et al., 2023) for general-domain API invocation, alongside GeoAnalystBench (Zhang et al., 2025), GeoBenchX (Krechetova and Kochedykov, 2025), and GeoPlan-Bench (Li et al., 2025b) tailored for geospatial tasks—these existing baselines still exhibit significant limitations when assessing authentic, complex spatial analysis workflows (as summarized in Table 1). [...] The construction of the task set began with a rigorous screening of GeoAnalystBench (Zhang et al., 2025). We evaluated its 50 cases and excluded 10 tasks that relied on closed-source data or proprietary ArcGIS formats, ensuring compatibility with open geospatial computing ecosystems. However, a deeper analysis revealed that the remaining 40 cases could not be directly utilized for autonomous tool orchestration due to two critical limitations: (1) Coarse Logical Granularity: The original [...] remains weak (Akinboyewa et al., 2025). This further underscores the urgent need for systematic evaluation of the comprehensive capability boundaries of agents in complex geospatial scenarios."
+          ],
+          "query": "Agent evaluation limitations gaps complex tasks tool use planning 2025",
+          "target_q": "Agent evaluation limitations gaps complex tasks tool use planning 2025"
+        }
+      ]
+    },
+    {
+      "query": "Agent benchmark leaderboard 2025 2026 update coverage",
+      "notes": [
+        {
+          "fact": "AgentAtlas论文指出τ-bench证明单次成功评估不足，2026年5月Sierra榜单上Claude Opus 4.5 pass1得分0.70领先，但Qwen3.5-397B-A17B在pass4以0.56反超，排名随尝试次数k增加而逆转",
+          "sources": [
+            "https://arxiv.org/html/2605.20530v1"
+          ],
+          "snippets": [
+            "τ\\tau-bench is the strongest external evidence that single-shot success is insufficient (Fig. 2). On the May-2026 Sierra Overall leaderboard, Claude Opus 4.5 wins pass1 (0.70) but Qwen3.5-397B-A17B wins pass4 (0.56) — rank-3 becomes rank-1 as kk grows because Qwen has the flattest decay curve (−-12 pp vs. ≈\\approx−-18 pp). Even the strongest 2026 system loses ≈\\approx25 pp between pass1 and pass4 on Retail (Qwen 0.84 →\\to 0.60). The one controlled pair on the leaderboard — GPT-5.2 with [...] still trails clean utility by ≈\\approx11 pp (AgentDojo team, 2025; Debenedetti et al., 2024); AgentRx localizes critical failure steps in failed trajectories (Microsoft Research, 2026); ATBench evaluates long-horizon trajectory safety (Li et al., 2026); and MCP security benchmarks reveal new tool-poisoning and prompt-injection surfaces (Yang et al., 2025; MCPTox authors, 2025). Anthropic’s computer-use work and the broader Claude Code ecosystem have made agentic coding and GUI interaction a [...] insufficient and scaffold-sensitive. Newer benchmark families instead expose the evaluation gaps this taxonomy is designed to map: τ\\tau-bench reports passk decay and the frontier-model crown flips between k=1k{=}1 and k=4k{=}4 on the 2026 Sierra Overall leaderboard — Opus 4.5 wins pass1 (0.70), Qwen3.5 wins pass4 (0.56) (tau-bench team, 2026; Yao et al., 2024); AgentDojo shows targeted prompt-injection ASR fell from 56.3% on GPT-4-0125 to 7.3% on Claude 3.7 Sonnet while utility-under-attack"
+          ],
+          "query": "Agent benchmark leaderboard 2025 2026 update coverage",
+          "target_q": "Agent benchmark leaderboard 2025 2026 update coverage"
+        },
+        {
+          "fact": "Morph 2026年6月榜单显示，Terminal-Bench 2.1上GPT-5.6 Sol以89.5%领先，Claude Opus 5以89.1%紧随其后",
+          "sources": [
+            "https://www.morphllm.com/best-ai-coding-agents-2026"
+          ],
+          "snippets": [
+            "The best AI coding agent in August 2026 depends on the benchmark that matches your work. On Terminal-Bench 2.1, GPT-5.6 Sol at xhigh effort leads at 89.5% and Claude Opus 5 at max effort follows at 89.1%, so the two default models of the two most-used agents are within half a point of each other. Codex has defaulted to GPT-5.6 Sol since GPT-5.6 went generally available on July 9, 2026; Claude Code has defaulted to Opus 5 since July 24. On SWE-bench Verified, Fable 5 leads at 95.0% and Opus 4.8 [...] ## The Benchmarks, Explained\n\nThree benchmarks separate the agents. SWE-bench Verified measures whether a model resolves a real GitHub issue in Python (human-validated, 500 tasks). SWE-bench Pro is the harder, contamination-resistant set on larger commercial-style codebases. Terminal-Bench v2 (the 2.1 leaderboard) measures whether an agent completes a terminal-driven task end to end, scoring the agent-plus-model pair, not the model alone. [...] Updated August 2, 2026 (post-GPT-5.6, post-Opus-5). Coding agents scored on SWE-bench Verified, SWE-bench Pro, and Terminal-Bench v2, with $/task and pricing. GPT-5.6 Sol leads Terminal-Bench 2.1 at 89.5%; Claude Opus 5 is 89.1%. Fable 5 is available again.\n\nBest AI Coding Agents (August 2026): The Scored Leaderboard, Updated After GPT-5.6 and Opus 5"
+          ],
+          "query": "Agent benchmark leaderboard 2025 2026 update coverage",
+          "target_q": "Agent benchmark leaderboard 2025 2026 update coverage"
+        },
+        {
+          "fact": "CodeSOTA LLM基准榜单（2026年5月26日更新）追踪7个基准、130个模型，覆盖编码、数学、推理和智能体领域",
+          "sources": [
+            "https://www.codesota.com/llm"
+          ],
+          "snippets": [
+            "Results\n:   304\n\nPage updated\n:   May 26, 2026\n\nTracked shortlist · dated evidence\n\nCopper cells mark benchmark leaders [...] Codesota · Large Language ModelsThe frontier leaderboard, dated & sourcedSnapshot page updated: 2026-05-26\n\nTracked registry · 7 benchmarks · 130 models · per-benchmark timestamps below\n\n# Large language models, measured honestly.\n\nFrontier model performance across knowledge, reasoning, math, code, and sustained tool-use — every score dated, every source linked, every benchmark described in its own words. No vendor spin, no collapsed averages. [...] Gemini 3.1 Pro\n\nCoding· verified 2026-05-26LiveCodeBench (classic)\n\n93.5%53 models\n\nDeepSeek-V4-Pro Max\n\nCoding· verified 2026-04-24Tau2-Bench\n\n89.7%19 models\n\nGLM-5\n\nAgentic & Tools· verified 2026-05-12MMLU (legacy saturated sanity check)\n\n92.9%63 models\n\no3\n\nLegacy Sanity Check· verified 2026-05-18\n\nFig 3 · Tracked leader per benchmark with count of recorded submissions and latest benchmark timestamp. Click any tile to scroll to its full leaderboard below.\n\n§ 03 · Caveat"
+          ],
+          "query": "Agent benchmark leaderboard 2025 2026 update coverage",
+          "target_q": "Agent benchmark leaderboard 2025 2026 update coverage"
+        },
+        {
+          "fact": "Galileo发布Agent Leaderboard v2，用跨五个行业的真实企业场景、多轮对话和复杂决策测试智能体，2025年7月17日公布关键结果",
+          "sources": [
+            "https://galileo.ai/blog/agent-leaderboard-v2"
+          ],
+          "snippets": [
+            "That’s precisely the problem Agent Leaderboard v2 is built to solve. Rather than simply testing whether an agent can call the right tools, we put AIs through real enterprise scenarios spanning five industries with multi-turn dialogues and complex decision-making.\n\nKey Results as of July 17, 2025:\n\nGPT-4.1 leads with an average Action Completion (AC) score of 62% across all domains.\n\nGemini-2.5-flash excels at tool selection (94% TSQ) but struggles with task completion (38% AC). [...] That’s precisely the problem Agent Leaderboard v2 is built to solve. Rather than simply testing whether an agent can call the right tools, we put AIs through real enterprise scenarios spanning five industries with multi-turn dialogues and complex decision-making.\n\nKey Results as of July 17, 2025:\n\nGPT-4.1 leads with an average Action Completion (AC) score of 62% across all domains.\n\nGemini-2.5-flash excels at tool selection (94% TSQ) but struggles with task completion (38% AC). [...] That’s precisely the problem Agent Leaderboard v2 is built to solve. Rather than simply testing whether an agent can call the right tools, we put AIs through real enterprise scenarios spanning five industries with multi-turn dialogues and complex decision-making.\n\nKey Results as of July 17, 2025:\n\nGPT-4.1 leads with an average Action Completion (AC) score of 62% across all domains.\n\nGemini-2.5-flash excels at tool selection (94% TSQ) but struggles with task completion (38% AC)."
+          ],
+          "query": "Agent benchmark leaderboard 2025 2026 update coverage",
+          "target_q": "Agent benchmark leaderboard 2025 2026 update coverage"
+        },
+        {
+          "fact": "Vellum 2026年LLM榜单显示，SWE Bench智能体编码任务中GPT-5.6 Sol以96.2%居首，Claude Mythos 5以95.5%次之",
+          "sources": [
+            "https://www.vellum.ai/llm-leaderboard"
+          ],
+          "snippets": [
+            "Image 2896.2\n\nGPT-5.6 Sol\n\nImage 2995.5\n\nClaude Mythos 5\n\nImage 3095\n\nClaude Fable 5\n\nImage 3193\n\nGPT-5.6 Luna\n\nImage 3288.6\n\nClaude Opus 4.8\n\nBest in Agentic Coding (SWE Bench)\n| Model | Score |\n --- |\n| GPT-5.6 Sol | 96.2% |\n| Claude Mythos 5 | 95.5% |\n| Claude Fable 5 | 95% |\n| GPT-5.6 Luna | 93% |\n| Claude Opus 4.8 | 88.6% |\n\nNew\n### Best for Work Automations (AutoBench)\n\n30%23%15%8%0%\n\nImage 3326\n\nClaude Opus 5\n\nImage 3418.1\n\nGPT-5.6 Sol\n\nImage 3517.4\n\nClaude Fable 5\n\nImage 3615.5 [...] vs\n\nImage 69\n\n|  | Image 70Claude Opus 5 | Image 71Claude Mythos 5 |\n --- \n| Context size | 1,000,000 | 1,000,000 |\n| Cutoff date | May 2026 | Jan 2026 |\n| I/O cost | $5 / $25 | $10 / $50 |\n| Max output | 128,000 | 128,000 |\n| Latency  - |\n| Speed  - |\n\nBest Overall (HLE)\n\nClaude Opus 5\n\n64.7\n\nClaude Mythos 5\n\n64.5\n\nBest in Terminal Use (Terminal-Bench 2.1)\n\nClaude Opus 5-\n\nClaude Mythos 5\n\n88\n\nBest in Agentic Coding (SWE-Bench)\n\nClaude Opus 5-\n\nClaude Mythos 5\n\n95.5 [...] ## Top models per tasks\n\n### Best in Reasoning (GPQA Diamond)\n\n100%95%91%86%81%\n\nImage 2396.2\n\nClaude Sonnet 5\n\nImage 2495.4\n\nClaude 3 Opus\n\nImage 2594.6\n\nGPT-5.6 Sol\n\nImage 2694.3\n\nGemini 3.1 Pro\n\nImage 2794.2\n\nClaude Opus 4.7\n\nBest in Reasoning (GPQA Diamond)\n| Model | Score |\n --- |\n| Claude Sonnet 5 | 96.2% |\n| Claude 3 Opus | 95.4% |\n| GPT-5.6 Sol | 94.6% |\n| Gemini 3.1 Pro | 94.3% |\n| Claude Opus 4.7 | 94.2% |\n\n### Best in Agentic Coding (SWE Bench)\n\n100%94%88%82%77%\n\nImage 2896.2"
+          ],
+          "query": "Agent benchmark leaderboard 2025 2026 update coverage",
+          "target_q": "Agent benchmark leaderboard 2025 2026 update coverage"
+        }
+      ]
+    },
+    {
+      "query": "LLM agent red teaming robustness safety benchmark methodology 2025 2026",
+      "notes": [
+        {
+          "fact": "NRT-Bench基准评估LLM操作员智能体在多轮红队攻击下的安全控制室场景表现，关注交互轨迹而非孤立响应",
+          "sources": [
+            "https://arxiv.org/html/2606.20408v3"
+          ],
+          "snippets": [
+            "Agent safety evaluation has moved from isolated responses to interactive trajectories (Andriushchenko et al., 2025; Zhang et al., 2024; Kuntz et al., 2025; Yuan et al., 2024; Vijayvargiya et al., 2026). Closest to us, AgentDojo scores prompt-injection robustness via formal state-checking utility functions rather than an LLM judge (Debenedetti et al., 2024); we adopt the same attack-resistant criterion but ground it in a physical signal. A parallel literature shows that a single injected message [...] injected message can cascade through inter-agent communication (He et al., 2025; Xie et al., 2026), yet these works measure abstract harms (task failure, data leakage) and rarely model sustained adaptive pressure against a role-structured operator team; defences against such multi-agent attacks remain nascent (Miao et al., 2025). [...] LLMs are increasingly proposed for nuclear and industrial decision support (Lee and others, 2025; Xian et al., 2024; Almeldein and others, 2025; Lee, 2025), and ICS-focused benchmarks evaluate their cyber-advisory knowledge (Bhusal et al., 2024; Keppler et al., 2026). This work establishes the appetite for—and risk of—deployment near critical infrastructure, but measures capability or knowledge in isolation, not the adversarial robustness of an operator team driven toward a physically unsafe"
+          ],
+          "query": "LLM agent red teaming robustness safety benchmark methodology 2025 2026",
+          "target_q": "Agent evaluation robustness safety adversarial attacks benchmark 2025"
+        },
+        {
+          "fact": "TEE-RedBench提出面向可信执行环境的红队基准方法，测试Sophia和Cai等LLM在策略滥用探针下的提示失败可迁移性",
+          "sources": [
+            "https://arxiv.org/html/2602.19450v1"
+          ],
+          "snippets": [
+            "Motivated by this view, we propose TEE-RedBench 111, a TEE-grounded benchmark methodology designed around high-precision relevant questions and policy-bound misuse probes, and we focus on the transferability of prompt-induced failures between two of the most prevalently deployed LLMs (Sophia and Cai, 2026): ChatGPT-5.2 and Claude Opus-4.6. Rather than ranking TEEs, we study how assistants reason about TEEs, how errors cluster, and how to build secure workflows that remain robust even when [...] TEE-RedBench is a benchmarking methodology for evaluating general-purpose LLM assistants as TEE security decision aids. It combines (i) a TEE-grounded prompt framework that targets architecturally consequential reasoning, (ii) paraphrase and multi-turn stress tests that expose brittle failure modes, and (iii) a dual-track rubric that separates technical correctness from safety behavior (described in Tables 2 and 1). [...] We design a red-teaming methodology for evaluating prevalently used LLM (ChatGPT-5.2 and Claude Opus-4.6) as TEE security decision aids, focusing on SGX and TrustZone and on the transferability of prompt-induced failures. Our benchmark, TEE-RedBench, couples a TEE-grounded prompt taxonomy (Table 2) with a dual-track rubric (Table 1) that disentangles technical quality from safety behavior and supports conservative, worst-case risk accounting. We notice that many failures are not purely"
+          ],
+          "query": "LLM agent red teaming robustness safety benchmark methodology 2025 2026",
+          "target_q": "Agent evaluation robustness safety adversarial attacks benchmark 2025"
+        },
+        {
+          "fact": "SafeSearch对LLM搜索智能体开展系统红队研究，指出现有评估依赖人工构造测试用例",
+          "sources": [
+            "https://arxiv.org/html/2509.23694v5"
+          ],
+          "snippets": [
+            "To answer this question, we undertake a systematic red-teaming study to identify, measure, and begin to mitigate failures in search agent safety.\nThis is non-trivial:\n(1) Existing evaluations (Wei et al., 2025; Wong et al., 2026) for search agents rely on human effort to craft test cases, which is labor-intensive and hard to scale.\n(2) Testing by crafting risk-inducing queries (Luo et al., 2025; Ou et al., 2025) can be cost-inefficient and offer limited risk coverage. [...] Agent safety benchmarks.\nExisting agent safety evaluations rarely cover threats to search agents or tools in depth (Ruan et al., 2024; Zhang et al., 2025b: formalizing and benchmarking attacks and defenses in LLM-based agents\"); Andriushchenko et al., 2025), and when they do, the focus is often restricted to narrow threats like indirect prompt injection (Zhan et al., 2024; Liao et al., 2025).\nAs a result, these benchmarks provide only partial coverage of the risks faced by search agents."
+          ],
+          "query": "LLM agent red teaming robustness safety benchmark methodology 2025 2026",
+          "target_q": "Agent evaluation robustness safety adversarial attacks benchmark 2025"
+        },
+        {
+          "fact": "CNFinBench评估LLM在金融场景的能力、合规与安全维度，FinJailbreak聚焦金融对抗提示，覆盖市场操纵、内幕交易、监管规避等违规类型",
+          "sources": [
+            "https://arxiv.org/html/2603.10807v1"
+          ],
+          "snippets": [
+            "CNFinBench (Ding et al., 2025) evaluates LLMs across capability, compliance, and safety dimensions in realistic financial scenarios, while FinJailbreak (Li, 2026) focuses on adversarial prompting in finance, covering violation types including market manipulation, insider trading, regulatory evasion, and data privacy breaches. [...] Recent finance-oriented benchmarks begin to address this gap by introducing domain-aware categorizations.\nCheng et al. (2025) reveal significant deficiencies in current safety alignment even when evaluated on a dedicated financial benchmark, and introduce FINBench to systematically assess regulatory risk concealment in multi-turn interactions."
+          ],
+          "query": "LLM agent red teaming robustness safety benchmark methodology 2025 2026",
+          "target_q": "Agent evaluation robustness safety adversarial attacks benchmark 2025"
+        }
+      ]
+    },
+    {
+      "query": "enterprise LLM agent evaluation deployment methodology offline-to-online transition lessons learned 2025 2026",
+      "notes": [
+        {
+          "fact": "Lyzr 2026企业指南建议将在线与离线评估作为单一闭环运行，离线评估把关发布、在线评估监控实时行为，成熟LLM团队两者并行",
+          "sources": [
+            "https://www.lyzr.ai/blog/online-vs-offline-ai-evaluation"
+          ],
+          "snippets": [
+            "## Best Practices for Continuous Improvement\n\nRun both evaluation modes as a single loop, not two separate programs owned by two separate teams. Offline gates releases, online watches live behavior, most mature LLM teams in 2026 run both.\n\nMake failure capture automatic. Every production failure a monitoring system catches should have a path back into the offline test set, or the same failure will resurface after the next model update. [...] 1. New model or major prompt change → Offline first, always. No exceptions, regardless of how confident the team is.\n2. Passed offline, safety-critical domain (healthcare, finance, legal) → Human evaluation pass, then shadow deployment before any user exposure.\n3. Passed offline, lower-stakes domain (internal tools, recommendations) → Shadow deployment optional; move to a small A/B test (1-5% of traffic) directly. [...] A B2B sales research agent. Offline benchmarks confirm the agent retrieves accurate company data and drafts outreach that passes a rubric-based LLM-as-judge check for tone and factuality. Online, the real test is whether reps actually use the drafts without heavy editing, a signal no offline dataset can produce, because it depends entirely on how a specific sales team behaves under time pressure inside a complex B2B sales process. Lyzr’s Agent Control Plane structures exactly this kind of"
+          ],
+          "query": "enterprise LLM agent evaluation deployment methodology offline-to-online transition lessons learned 2025 2026",
+          "target_q": "Agent evaluation production online offline practice case study 2025"
+        },
+        {
+          "fact": "Lyzr指南强调生产环境失败捕获应自动化，每个生产故障都是评估数据来源",
+          "sources": [
+            "https://www.lyzr.ai/blog/online-vs-offline-ai-evaluation"
+          ],
+          "snippets": [
+            "## Best Practices for Continuous Improvement\n\nRun both evaluation modes as a single loop, not two separate programs owned by two separate teams. Offline gates releases, online watches live behavior, most mature LLM teams in 2026 run both.\n\nMake failure capture automatic. Every production failure a monitoring system catches should have a path back into the offline test set, or the same failure will resurface after the next model update. [...] 1. New model or major prompt change → Offline first, always. No exceptions, regardless of how confident the team is.\n2. Passed offline, safety-critical domain (healthcare, finance, legal) → Human evaluation pass, then shadow deployment before any user exposure.\n3. Passed offline, lower-stakes domain (internal tools, recommendations) → Shadow deployment optional; move to a small A/B test (1-5% of traffic) directly. [...] A B2B sales research agent. Offline benchmarks confirm the agent retrieves accurate company data and drafts outreach that passes a rubric-based LLM-as-judge check for tone and factuality. Online, the real test is whether reps actually use the drafts without heavy editing, a signal no offline dataset can produce, because it depends entirely on how a specific sales team behaves under time pressure inside a complex B2B sales process. Lyzr’s Agent Control Plane structures exactly this kind of"
+          ],
+          "query": "enterprise LLM agent evaluation deployment methodology offline-to-online transition lessons learned 2025 2026",
+          "target_q": "Agent evaluation production online offline practice case study 2025"
+        },
+        {
+          "fact": "Neontri 2026企业AI智能体部署指南指出，Langfuse、Phoenix（Arize）等LLMOps平台提供追踪、成本跟踪和质量评估，支撑生产部署的监控与学习",
+          "sources": [
+            "https://neontri.com/blog/enterprise-ai-agents"
+          ],
+          "snippets": [
+            "To support and monitor this learning process, LLMOps platforms such as Langfuse, Phoenix (Arize), and cloud-native observability modules provide tracing, cost tracking, and quality evaluation, ensuring responsible and reliable production deployment. [...] This includes model updates, prompt drift management, monitoring and alerting, security patching, and continuous evaluation. LLMOps tooling adds cost but is essential to catch quality degradation before it becomes a business problem. [...] Enterprise AI agents operate as layered systems, in which each component plays a distinct role in translating goals into outcomes. The IDEAL architecture stack captures this structure across five critical layers: Intelligence (LLM foundation), Decision (reasoning and planning), Execution (tools and APIs), Action (orchestration), and Learned (memory and observability). Together, these layers define how agents reason, plan, interact with other systems, orchestrate workflows, and continuously"
+          ],
+          "query": "enterprise LLM agent evaluation deployment methodology offline-to-online transition lessons learned 2025 2026",
+          "target_q": "Agent evaluation production online offline practice case study 2025"
+        },
+        {
+          "fact": "Teneo企业级LLM智能体构建指南建议先在受控环境向小规模用户群部署，监控准确性、每次交互LLM调用成本及包含率",
+          "sources": [
+            "https://www.teneo.ai/blog/what-are-llm-agents-and-how-to-build-them-for-your-enterprise"
+          ],
+          "snippets": [
+            "Deploy your agent in a controlled environment, starting with a small group of users. Monitor its performance closely:\n\n Accuracy: Is it correctly understanding intent and providing correct information?\n Cost: How many LLM calls is it making per interaction? Are costs within budget?\n Containment Rate: What percentage of requests is it handling without human escalation?\n User Satisfaction: Are users finding the agent helpful? [...] Orchestration is Key: The most critical component for success is an LLM Orchestration Platform. This layer acts as the central nervous system, managing the agent’s logic, state, tool use, and security, while remaining independent of the underlying LLM.\n A 5-Step Framework: This guide provides a practical, 5-step framework for building an enterprise-grade LLM agent, covering everything from use case definition to deployment and monitoring. [...] For each action your agent needs to perform, you must create a secure tool. This involves creating a dedicated, secure API endpoint that the agent can call. Crucially, never expose your internal databases or systems directly to the agent. The orchestration layer should be the only system authorized to invoke these tools, based on its defined logic.\n\n#### Step 5: Deploy, Monitor, and Iterate"
+          ],
+          "query": "enterprise LLM agent evaluation deployment methodology offline-to-online transition lessons learned 2025 2026",
+          "target_q": "Agent evaluation production online offline practice case study 2025"
+        },
+        {
+          "fact": "LangChain《State of Agent Engineering》报告显示，相当比例受访者尚未在LLM聊天或编码辅助之外使用智能体，agentic应用仍处早期阶段",
+          "sources": [
+            "https://www.langchain.com/state-of-agent-engineering"
+          ],
+          "snippets": [
+            "A meaningful minority also noted that they don’t yet use agents beyond LLM chat or coding assistance, underscoring that while agent usage is widespread, broader “agentic everything” is still in its early innings.\n\n## Methodology\n\nThe insights from this report were aggregated from a public survey that we ran for 2 weeks from Nov 18th-Dec 2nd, 2025. We received 1340 responses. Here’s some demographic data:\n\nTop 5 industries:\n\n   Technology (63% of respondents) [...] today.\n\n12 June, 2026\n\nIntroduction\n\nInsights\n\nMethodology\n\nShare\n\n now have agents running in production environments, with another 30.4% actively developing agents with concrete plans to deploy them.\n\nThis marks clear growth from last year’s survey, where 51% reported having agents in production. Organizations are moving past the proof-of-concept stage into production — the question for most organizations is no longer “if” they will ship agents but “how” and “when”.\n\nImage 11"
+          ],
+          "query": "enterprise LLM agent evaluation deployment methodology offline-to-online transition lessons learned 2025 2026",
+          "target_q": "Agent evaluation production online offline practice case study 2025"
+        },
+        {
+          "fact": "LangChain报告基于公开调查汇总，反映2025-2026年企业智能体工程实践现状",
+          "sources": [
+            "https://www.langchain.com/state-of-agent-engineering"
+          ],
+          "snippets": [
+            "A meaningful minority also noted that they don’t yet use agents beyond LLM chat or coding assistance, underscoring that while agent usage is widespread, broader “agentic everything” is still in its early innings.\n\n## Methodology\n\nThe insights from this report were aggregated from a public survey that we ran for 2 weeks from Nov 18th-Dec 2nd, 2025. We received 1340 responses. Here’s some demographic data:\n\nTop 5 industries:\n\n   Technology (63% of respondents) [...] today.\n\n12 June, 2026\n\nIntroduction\n\nInsights\n\nMethodology\n\nShare\n\n now have agents running in production environments, with another 30.4% actively developing agents with concrete plans to deploy them.\n\nThis marks clear growth from last year’s survey, where 51% reported having agents in production. Organizations are moving past the proof-of-concept stage into production — the question for most organizations is no longer “if” they will ship agents but “how” and “when”.\n\nImage 11"
+          ],
+          "query": "enterprise LLM agent evaluation deployment methodology offline-to-online transition lessons learned 2025 2026",
+          "target_q": "Agent evaluation production online offline practice case study 2025"
+        }
+      ]
+    },
+    {
+      "query": "Agent evaluation robustness safety adversarial attacks benchmark 2025",
+      "notes": [
+        {
+          "fact": "Nöther等2025年研究测试多智能体系统对对抗诱导危害的鲁棒性，覆盖17类危害类别，核心数据集含188个有害行为示例，测试5个智能体系统",
+          "sources": [
+            "https://arxiv.org/html/2605.16282v1"
+          ],
+          "snippets": [
+            "(Nöther et al., 2025) [R5] benchmarks the robustness of multi-agent systems to adversarially-induced harms, where a compromised insider agent manipulates others into executing harmful actions across 17 harm categories. The core dataset contains 188 harmful action examples tested across 5 agentic system implementations and 8 LLMs. All tested models are vulnerable, with attack success rates ranging from 3% (Qwen3 in debate settings) to 53% (Llama-3.1-8B). Larger models are often more vulnerable [...] (Kavathekar et al., 2025) [R5] benchmarks adversarial risks specific to multi-agent LLM systems with 300 adversarial instances across 5 high-stakes scenarios (healthcare, legal, finance, education, news) using 211 tools. It evaluates 6 attack types—including colluding agents, single-agent compromise, and impersonation—across 10 backbone LLMs in AutoGen and CrewAI configurations. The benchmark introduces the Effective Robustness Score (ERS) metric to quantify the safety–utility tradeoff, finding [...] significant after multiple-comparison correction (AgentDojo: τb=−0.53\\tau\\_{b}{=}{-}0.53, raw p=0.016p{=}0.016). This suggests that adversarial robustness and autonomous alignment are distinct risk dimensions that the current benchmark landscape evaluates unevenly. The bias has a temporal dimension: the agent-internal evaluation cluster (RepliBench, AgentMisalignment, PropensityBench, Scheming Propensity, Shutdown Resistance) appears only in 2025–2026, so non-adversarial evaluation is"
+          ],
+          "query": "Agent evaluation robustness safety adversarial attacks benchmark 2025",
+          "target_q": "Agent evaluation robustness safety adversarial attacks benchmark 2025"
+        },
+        {
+          "fact": "OS-Harm基准衡量计算机使用智能体的安全性，Yang等2025年实证研究提示词技术可有效缓解对抗输入",
+          "sources": [
+            "https://arxiv.org/html/2506.14866v1"
+          ],
+          "snippets": [
+            "Defenses for LLM agents.\nImproving the robustness of LLM agents against adversarial inputs is critical for their widespread adoption.\nTo this end, Yang et al. (2025) conduct an empirical study on in-context defense strategies, demonstrating the effectiveness of prompting techniques in mitigating prompt injection (or context deception in their terminology) attacks. [...] Similarly, Yuan et al. (2024) present R-Judge, a benchmark designed to assess LLMs’ accuracy in recognizing safety risks within agent execution traces. Agent Security Bench (Zhang et al., 2024a) formalizes and benchmarks a wide spectrum of attacks and defenses for generic LLM agents across 10 scenarios that use over 400 different tools. More relevant to the computer use setting, Wu et al. (2025) dissect the adversarial robustness of multimodal LLM agents, revealing vulnerabilities to [...] Li et al. (2025) show that browser agents are vulnerable to simple prompt injection attacks. Some attacks like adversarial pop-ups (Zhang et al., 2024b) achieve high success rate and are trivial to implement."
+          ],
+          "query": "Agent evaluation robustness safety adversarial attacks benchmark 2025",
+          "target_q": "Agent evaluation robustness safety adversarial attacks benchmark 2025"
+        },
+        {
+          "fact": "MCP-SafetyBench基于MCP-Universe构建，系统评估LLM智能体对MCP攻击的鲁棒性，任务反映真实场景和多轮推理",
+          "sources": [
+            "https://arxiv.org/html/2512.15163v2"
+          ],
+          "snippets": [
+            "In this paper, we present MCP-SafetyBench, a comprehensive benchmark designed to systematically evaluate the robustness of LLM Agents against MCP attacks.\nBuilt on the MCP-Universe benchmark (Luo et al., 2025), MCP-SafetyBench provides tasks that reflect realistic scenarios and multi-turn reasoning workflows, filling critical gaps in existing evaluations. [...] MCIP-bench (Jing et al., 2025) builds a taxonomy-driven dataset from function-calling corpora, and MCP-AttackBench (Xing et al., 2025) scales adversarial testing with 70k+ attack samples.\nMCPSecBench (Yang et al., 2025b) provides a benchmark covering seventeen representative attacks across user, host, transport, and server layers. [...] Attack Vectors in MCP.\nWhile MCP extends agent capability, it also creates new security exposures (Guo et al., 2025).\nInvariant Labs (Beurer-Kellner and Fischer, 2025) introduced Tool Poisoning Attacks, where malicious metadata or instructions inside tool descriptions manipulate agent behavior.\nThey further proposed Shadowing Attacks, in which malicious servers override trusted tools, and MCP Rug Pulls, where benign tools are later updated with harmful logic."
+          ],
+          "query": "Agent evaluation robustness safety adversarial attacks benchmark 2025",
+          "target_q": "Agent evaluation robustness safety adversarial attacks benchmark 2025"
+        },
+        {
+          "fact": "TAMAS采用ARIA框架评估多智能体LLM系统对抗风险，ARIA-1为立即拒绝（安全），ARIA-2为延迟拒绝",
+          "sources": [
+            "https://arxiv.org/html/2511.05269"
+          ],
+          "snippets": [
+            "To assess robustness, we adopt the Agent Risk Assessment (ARIA) framework (Tur et al., 2025), which categorizes system responses into four outcomes: ARIA-1 represents immediate refusal, indicating safe behavior; ARIA-2 denotes delayed refusal, where the system hesitates before rejecting the task; ARIA-3 reflects an intent to complete the task but a failure to do so; and ARIA-4 indicates a successful attack, representing unsafe behavior. Due to the semantic complexity of the logs, we adopt an [...] Despite significant progress in improving the collaboration and usability of multi-agent systems, their security and robustness remain largely under-explored (Hammond et al., 2025). The inclusion of multiple interacting agents introduces additional components in the system, thereby increasing the attack surface as shown in Figure 1. This increased complexity makes multi-agent setups more susceptible to diverse adversarial attacks, which can compromise the system integrity and lead to severe [...] agent safety in the context of generating and executing malicious code. Agent Security Bench (ASB) (Zhang et al., 2025: formalizing and benchmarking attacks and defenses in llm-based agents\")) expands the scope to include multiple attacks and defenses, but remains limited to a single-agent setup, leaving the complexities of multi-agent interactions largely unexplored. Single-agent benchmarks evaluate isolated prompt injection or code execution risks. However, they cannot capture emergent risks"
+          ],
+          "query": "Agent evaluation robustness safety adversarial attacks benchmark 2025",
+          "target_q": "Agent evaluation robustness safety adversarial attacks benchmark 2025"
+        },
+        {
+          "fact": "GuardianAgentBench对Claude Opus 4.5、GPT-5.2 Pro、GPT-OSS-120B、Gemini-3-Pro等六个前沿模型施加五种对抗攻击模式，测试不同失败模式",
+          "sources": [
+            "https://arxiv.org/html/2607.20982v1"
+          ],
+          "snippets": [
+            "and evaluation criteria, and is further subjected to five adversarial attack modes targeting distinct failure patterns. We benchmark six frontier models—Claude Opus 4.5 (Anthropic, 2025a), GPT-5.2 Pro (OpenAI, 2025a), GPT-OSS-120B (OpenAI, 2025b), Gemini-3-Pro (Gemini Team, Google DeepMind, 2025), DeepSeek-V3.2 (DeepSeek-AI, 2025), and Qwen3-Max (Yang et al., 2025)—and find that even the strongest configuration achieves only 74.8 overall accuracy, confirming substantial room for improvement."
+          ],
+          "query": "Agent evaluation robustness safety adversarial attacks benchmark 2025",
+          "target_q": "Agent evaluation robustness safety adversarial attacks benchmark 2025"
+        }
+      ]
+    },
+    {
+      "query": "Agent evaluation future trends adaptive automated generation cross-modal 2026",
+      "notes": [
+        {
+          "fact": "Multicrossmodal Automated Agent面向材料科学跨模态数据整合，未来计划引入主动学习和多模态Transformer扩展",
+          "sources": [
+            "https://arxiv.org/html/2505.15132v1"
+          ],
+          "snippets": [
+            "tailored to cross-modal understanding in materials science. Future work involves incorporating active learning (e.g., agent-driven data requests), scaling the system for larger datasets, and integrating advanced multimodal transformers. Ultimately, such AI agents can transform the growing volume of materials data into actionable knowledge, accelerating innovation in materials discovery and development. [...] features and property trends across multiple data sources, an important step toward AI-driven “digital researchers.” Our comparison with domain-specific models shows that while specialized tools remain essential, a multicrossmodal method provides holistic problem-solving capabilities previously unattainable. We also discussed evaluation strategies focusing on retrieval, accuracy, alignment, and human judgment to capture integration quality, anticipating the rise of new benchmarks tailored to [...] | Evaluation Metric | Our Agent | MultiMat | AtomAgents | GPT-4.5 |\n ---  --- \n| Cross-modal Retrieval Accuracy (Recall@K) | 85% | 80% | 82% | 78% |\n| Task-Specific Performance (Image Captioning Accuracy) | 85% | 83% | 84% | 80% |\n| Modality Alignment (Cosine Similarity) | 0.82 | 0.78 | 0.80 | 0.75 |\n| Integrated Answer Coverage (improvement) | +35% | +25% | +28% | +20% |"
+          ],
+          "query": "Agent evaluation future trends adaptive automated generation cross-modal 2026",
+          "target_q": "Agent evaluation future trends adaptive automated generation cross-modal 2026"
+        },
+        {
+          "fact": "MM-tau-p²提出双控制设置下人物自适应提示方法，用于鲁棒多模态智能体评估",
+          "sources": [
+            "https://arxiv.org/abs/2603.09643"
+          ],
+          "snippets": [
+            "|  |  Focus to learn more  arXiv-issued DOI via DataCite | [...] Both individuals and organizations that work with arXivLabs have embraced and accepted our values of openness, community, excellence, and user data privacy. arXiv is committed to these values and only works with partners that adhere to them.\n\nHave an idea for a project that will add value for arXiv's community? Learn more about arXivLabs.\n\nSimons Foundation\nSimons Foundation International\nSchmidt Sciences [...] archive\n\n# Computer Science > Emerging Technologies\n\n# Title:MM-tau-p$^2$: Persona-Adaptive Prompting for Robust Multi-Modal Agent Evaluation in Dual-Control Settings"
+          ],
+          "query": "Agent evaluation future trends adaptive automated generation cross-modal 2026",
+          "target_q": "Agent evaluation future trends adaptive automated generation cross-modal 2026"
+        },
+        {
+          "fact": "Nexus Architect通过自动化工作流生成实现自适应多智能体推理，已对前沿LRM全面基准测试",
+          "sources": [
+            "https://arxiv.org/pdf/2507.14393"
+          ],
+          "snippets": [
+            "our empirical evaluation, including a comprehensive benchmarking of Nexus Architect against state-of-the-art LRMs. Finally, Section 5 summarizes our key findings and discusses open challenges and future research directions."
+          ],
+          "query": "Agent evaluation future trends adaptive automated generation cross-modal 2026",
+          "target_q": "Agent evaluation future trends adaptive automated generation cross-modal 2026"
+        },
+        {
+          "fact": "Nexus Architect论文提出自适应多智能体推理方法，包含自动化工作流生成与基准测试",
+          "sources": [
+            "https://www.arxiv.org/pdf/2507.14393"
+          ],
+          "snippets": [
+            "our empirical evaluation, including a comprehensive benchmarking of Nexus Architect against state-of-the-art LRMs. Finally, Section 5 summarizes our key findings and discusses open challenges and future research directions."
+          ],
+          "query": "Agent evaluation future trends adaptive automated generation cross-modal 2026",
+          "target_q": "Agent evaluation future trends adaptive automated generation cross-modal 2026"
+        },
+        {
+          "fact": "基于LLM和多智能体协作的移动智能助手自动多模态评估框架，利用LLM生成类人判断",
+          "sources": [
+            "https://arxiv.org/html/2508.09507v2"
+          ],
+          "snippets": [
+            "Recent advances in Large Language Models (LLMs) have demonstrated remarkable capabilities in understanding context, reasoning about complex scenarios, and generating human-like judgments across diverse domains (Zhang et al., 2025). These developments suggest that LLM-based evaluation systems could potentially bridge the gap between manual assessment quality and automated scalability. Multi-agent frameworks have emerged as promising approaches for addressing evaluation complexity, as [...] Inter-annotator agreement presents persistent challenges, particularly when assessing subjective dimensions such as naturalness and user satisfaction (Levi et al., 2025). The multi-modal nature of modern AI assistants introduces additional complexity that traditional evaluation frameworks struggle to address, lacking unified frameworks for assessing cross-modal consistency and temporal alignment. Traditional metrics derived from machine translation research prove inadequate for capturing [...] Recent developments in multi-agent systems show promising potential for addressing conversational AI evaluation complexity. The IntellAgent framework employs strategy-driven graph modeling with realistic event generation and interactive user-agent simulation (Levi et al., 2025). The HiMATE hierarchical framework constructs agent systems based on multi-dimensional quality metrics with inter-agent self-reflection mechanisms that significantly reduce systematic hallucination problems (Zhang et"
+          ],
+          "query": "Agent evaluation future trends adaptive automated generation cross-modal 2026",
+          "target_q": "Agent evaluation future trends adaptive automated generation cross-modal 2026"
+        }
+      ]
+    },
+    {
+      "query": "Agent evaluation production online offline practice case study 2025",
+      "notes": [
+        {
+          "fact": "Braintrust平台同时支持开发期离线评估（针对精选测试集捕获回归）和生产流量异步在线评估",
+          "sources": [
+            "https://www.braintrust.dev/articles/top-5-platforms-agent-evals-2025"
+          ],
+          "snippets": [
+            "Online and offline evaluation\n\nBraintrust supports both development-time experimentation and production monitoring. Offline evals run against curated test datasets during development, catching regressions before deployment. Online evaluation scores production traffic asynchronously, enabling teams to monitor quality at scale with configurable sampling rates.\n\npython [...] Offline evaluation runs during development against test datasets, while online evaluation scores production traffic asynchronously. Braintrust supports both modes with the same scorer library and configurable sampling rates.\n\nWhat are the best alternatives to Galileo AI? [...] Online and offline evaluation with configurable sampling for production monitoring\n Deep tracing with span-level visibility and session replay\n Pre-built scorer library for common patterns when needed\n Brainstore purpose-built database for searching and analyzing AI interactions at scale\n SOC 2 compliance with enterprise security, RBAC, and self-hosting options"
+          ],
+          "query": "Agent evaluation production online offline practice case study 2025",
+          "target_q": "Agent evaluation production online offline practice case study 2025"
+        },
+        {
+          "fact": "Maxim平台支持采样生产会话进行在线评估、设置回归告警、分布式追踪定位根因，并将失败案例沉淀为离线数据集",
+          "sources": [
+            "https://www.getmaxim.ai/articles/top-agent-evaluation-tools-in-2025-best-platforms-for-reliable-enterprise-evals"
+          ],
+          "snippets": [
+            "### Observe\n\n Sample production agent sessions for online evals; set alerts on regressions.\n Instrument distributed tracing for model and tool spans (OTel) to surface root causes.\n Mine failures into datasets for targeted offline re-runs and fine-tuning.\n\nA strong platform lets teams move fluidly across layers: ship an agent, observe issues, mine logs into datasets, run targeted offline evals, fix, redeploy, and validate improvements in production. [...] Offline evals run on curated datasets before release to quantify quality, safety, latency, and cost in controlled conditions. Online evals sample real production traffic and apply evaluators continuously to detect regressions and trigger alerts.\n\n### How Much Production Traffic Should Be Sampled For Online Evals? [...] CI/CD tip: Gate deployment if any core evaluator drops more than 2 percentage points versus baseline or if p95 latency exceeds the SLO.\n\n### 5. Observe In Production And Run Online Evals\n\nInstrument distributed tracing with spans for model calls and tool invocations. Sample 5 to 10 percent of sessions for online evaluations."
+          ],
+          "query": "Agent evaluation production online offline practice case study 2025",
+          "target_q": "Agent evaluation production online offline practice case study 2025"
+        },
+        {
+          "fact": "Datadog提出离线评估作为开发期单元测试方法，在发布前用已知测试用例验证变更",
+          "sources": [
+            "https://www.datadoghq.com/blog/offline-llm-evaluations"
+          ],
+          "snippets": [
+            "Offline evaluation presents a way to unit test your AI agent in development, validating new changes against known test cases before shipping them to production. In this guide, we’ll discuss best practices for offline evaluations to help you deliver improvements for your AI agents faster and with more confidence.\n\nTo follow along, download our example application “Contract Redliner”.\n\n## Why offline evaluation matters [...] Offline evaluation is critical for making your agent development workflows efficient, scalable, and less incident-prone. By measuring application performance in preproduction with offline evaluations, you can prevent regressions from reaching users. [...] With a limited ability to validate changes before they reach customers, your agent is exposed to a higher potential for churn and lost revenue. Offline evaluation, where you maintain test data and run experiments within your local environment before pushing changes, is a portable and effective way to benchmark and iterate AI agents more efficiently and reliably."
+          ],
+          "query": "Agent evaluation production online offline practice case study 2025",
+          "target_q": "Agent evaluation production online offline practice case study 2025"
+        },
+        {
+          "fact": "Cleanlab指出MIT 2025年调查发现合规密集型后台职能常隐藏ROI，合规用例在受监管行业开始增多",
+          "sources": [
+            "https://cleanlab.ai/ai-agents-in-production-2025"
+          ],
+          "snippets": [
+            "> MIT’s State of AI in Business 2025 found that hidden ROI often emerges in back-office and compliance-heavy functions. Our data shows compliance use cases are less common overall, but beginning to appear more frequently in regulated industries where oversight is a priority.\n\nChart comparing percent usage for AI agent use cases\n\n## Evaluation stays in-house, but gaps remain [...] ### 2. Invest early in reliability layers\n\nWeak observability and immature guardrails are the most common pain points in production. Enterprises cannot scale agents without trust, and trust comes from visibility. Prioritizing evaluation, monitoring, and safeguards is the foundation for closing what MIT calls the “learning gap.”\n\n### 3. Build human governance into how agents operate [...] This report is based on a survey of 95 professionals across industries and company sizes. Participation was limited to leaders already operating AI agents in production with live user interactions. Respondents were screened carefully to ensure their agents were not in pilot or proof-of-concept stages but were actively deployed in workflows handling thousands of real interactions. The result is a focused view into the practices and challenges of the small minority of organizations that have"
+          ],
+          "query": "Agent evaluation production online offline practice case study 2025",
+          "target_q": "Agent evaluation production online offline practice case study 2025"
+        }
+      ]
+    }
+  ],
+  "searches": 8,
+  "steps": 9
+}

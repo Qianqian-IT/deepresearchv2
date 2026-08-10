@@ -33,7 +33,7 @@ from . import config
 from .llm import LLMClient
 from .planner import Planner, ResearchPlan
 from .researcher import Note, Researcher
-from .tools import SearchResult, SearchTool
+from .tools import TIER_LABEL, SearchResult, SearchTool
 
 
 # ============================================================
@@ -178,15 +178,64 @@ def _act_node(search_tool: SearchTool, log) -> "callable":
     return node
 
 
+def _append_findings_md(query: str, notes: list[Note], results: list[SearchResult],
+                        target_q: str = "") -> None:
+    """把 observe 筛选保留的发现（fact + 信源 + 原始摘要）追加到 findings/research-findings.md。
+
+    增量追加：每次 observe 后立即落盘，中断也不丢；零 LLM 成本（摘要本来就在上下文里）。
+    文件头只在文件不存在时写入一次。
+    """
+    if not notes:
+        return
+    from pathlib import Path
+
+    path = Path("findings") / "research-findings.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    url2res = {r.url: r for r in results}
+
+    lines: list[str] = []
+    if not path.exists():
+        lines += [
+            "# 调研发现（research findings）",
+            "",
+            "> observe 筛选保留的发现：fact + 信源 + 原始摘要，按执行顺序追加。",
+            "",
+        ]
+    lines.append(f"## 搜索：{query}")
+    if target_q:
+        lines.append(f"服务子问题：{target_q}")
+    for n in notes:
+        lines.append(f"- **发现**：{n.fact}")
+        for i, url in enumerate(n.sources):
+            r = url2res.get(url)
+            if r:
+                lines.append(
+                    f"  - 来源：{r.title} ｜ 信源：{TIER_LABEL.get(r.source_tier, '未知')} ｜ [{url}]({url})"
+                )
+                # 摘要优先用 Note 自带的（与来源一一对应），缺了再回退查结果
+                snippet = (n.snippets[i] if i < len(n.snippets) else r.snippet or "")
+                snippet = snippet.replace("\n", " ")
+                if snippet:
+                    lines.append(f"    - 摘要：{snippet}")
+            else:
+                lines.append(f"  - 来源：{url}")
+    lines.append("")
+    with open(path, "a", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+
+
 def _observe_node(researcher: Researcher, log) -> "callable":
     def node(state: ResearchState) -> dict:
         new_notes = researcher.observe(
             state["query"], state["results"], state.get("target_q", ""),
+            state["notes"],  # 已有发现：observe 里用于跨轮去重
         )
         for n in new_notes:
             log(f"[observe] 保留: {n.fact[:60]}")
         if not new_notes:
             log("[observe] 本轮无有价值信息，全部过滤")
+        # 筛选保留的发现（fact + 信源 + 摘要）增量落盘 findings/research-findings.md
+        _append_findings_md(state["query"], new_notes, state["results"], state.get("target_q", ""))
         # 每次 observe 的完整记录都进 state.observations，落盘时一条不丢
         record = {"query": state["query"], "notes": new_notes}
         return {"notes": new_notes, "observations": [record]}

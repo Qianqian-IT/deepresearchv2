@@ -1,3 +1,4 @@
+
 """Researcher：ReAct 循环的"决策提供者"（think / observe）。
 
 ReAct 的循环编排（think→act→observe→think...）由 LangGraph 状态图负责
@@ -11,6 +12,7 @@ ReAct 的循环编排（think→act→observe→think...）由 LangGraph 状态�
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 
 from .llm import LLMClient
@@ -23,8 +25,25 @@ class Note:
     """一次 observe 筛选保留的有价值信息。"""
     fact: str
     sources: list[str] = field(default_factory=list)   # 来源 URL 列表
+    snippets: list[str] = field(default_factory=list)  # 来源对应的原始摘要（与 sources 一一对应）
     query: str = ""                                    # 由哪条搜索得到
     target_q: str = ""                                 # 服务于哪个子问题（计划词），覆盖判定/归属用
+
+
+# 垃圾行黑名单：LLM 把 prompt 示例/分隔线/说明文字当输出时，直接过滤
+_BAD_FACT_PREFIX = re.compile(
+    r"^(?:关键信息|有价值的检索结果|搜索结果|以下|说明|---|#+)\s*"
+)
+_FACT_NUM_PREFIX = re.compile(r"^\[\d+\]\s*")   # "[1] 残留序号" 前缀
+_LIST_PREFIX = re.compile(r"^(?:[-*•]\s|\d+[.)]\s)")  # 行首列表符：- / 1. （要求后接空白，避免误伤 "3.14"、"---"）
+
+
+def _clean_fact(fact: str) -> str:
+    """清理 fact 里的垃圾前缀/残留；清完为空返回空串（调用方丢弃）。"""
+    f = _LIST_PREFIX.sub("", fact)
+    f = _FACT_NUM_PREFIX.sub("", f)
+    f = _BAD_FACT_PREFIX.sub("", f)
+    return f.strip()
 
 
 class Researcher:
@@ -100,58 +119,100 @@ class Researcher:
             return {"action": "search", "query": parts[-1], "target": target}
         return {}  # 解析失败：图节点兜底
 
-    def observe(self, query: str, results: list[SearchResult], target_q: str = "") -> list[Note]:
-        """observe：筛选本次检索结果 —— 有价值的保留（引用原文），没价值的丢弃。"""
+    def observe(
+        self, query: str, results: list[SearchResult],
+        target_q: str = "", notes: list[Note] | None = None,
+    ) -> list[Note]:
+        """observe：筛选本次检索结果 —— 提炼有价值的要点，丢弃没价值的。
+
+        输出是"提炼式要点"而非原文照抄：一句话说清 主体 + 事实 + 数据，
+        每条必须挂真实存在的来源序号；已有发现（notes）展示给 LLM 避免
+        重复归纳，解析层再做精确匹配兜底。
+        """
         if not results:
             return []
+        notes = notes or []
 
+        notes_text = "\n".join(f"- {n.fact}" for n in notes) or "（还没有发现）"
         results_text = "\n".join(
             f"[{i}] 标题: {r.title}\n    URL: {r.url}\n"
             f"    信源: {TIER_LABEL.get(r.source_tier, '未知')}\n"
             f"    摘要: {(r.snippet or '')[:300]}"
-            for i, r in enumerate(results)
+            for i, r in enumerate(results, 1)  # 编号 1 起步，匹配人/LLM 的计数习惯
         )
         prompt = f"""
-你是调研的信息筛选员。下面是一次搜索的结果，判断每条结果有没有保留价值。
+你是调研的信息筛选员。下面是一次搜索的结果，从中提炼有价值的信息要点。
 
 搜索词：{query}
 本搜索服务于子问题：{target_q or "（未指定）"}
 
+已有发现（结果里出现相同信息时跳过，不要重复归纳）：
+{notes_text}
+
 检索结果：
 {results_text}
 
-输出规则：
-- 有价值的：每行一条，严格格式 关键信息 | 来源序号(逗号分隔，最多3个)
-- 没价值的：不输出该行；整批都没有价值：只输出一行 SKIP
+输出：每行一条，严格格式：
+{{要点}} | {{来源序号}}
 
-判断标准：
-1. 有价值 = 信息直接支撑调研目标、内容具体可溯源（数据/事实/结论）、来源可信
-2. 关键信息 = 引用原文关键句或客观事实，不要转述发挥、不要加自己的判断
-3. 一手/权威信源优先；转载农场的结论除非没有更优信源，否则不要保留
-4. 与已输出的信息重复时，保留来源更权威的那条
+要点规范：
+- 一句话说清：什么主体 + 什么事实 + 什么数据/指标/时间；没有数据就不写，不要编造
+- 直接写主体名（产品/基准/论文/机构），不要用"它/该文/本文"指代
+- 不超过 100 字；长句拆短，修饰词全删；要点里不要用 "|" 符号
+- 信息必须能直接支撑调研目标，可验证、可溯源；不满足就跳过这一条
+- 整批都没有价值：只输出一行 SKIP
+
+来源序号 = 结果列表里的编号（1 起步：第一条是 1，不是 0），必须真实存在
 """.strip()
         resp = self.llm.chat(prompt, hint="researcher_observe")
 
-        notes: list[Note] = []
+        existing = {n.fact for n in notes}
+        new_notes: list[Note] = []
         for line in (resp or "").splitlines():
-            line = line.strip()
-            if not line or line.upper() == "SKIP":
+            note = self._parse_observe_line(line, results, query, target_q)
+            if note is None:
                 continue
-            parts = [p.strip() for p in line.split("|")]
-            fact, idxes = parts[0], parts[1] if len(parts) >= 2 else ""
-            urls: list[str] = []
-            for idx_str in idxes.split(","):
-                try:
-                    idx = int(idx_str.strip())
-                    if 0 <= idx < len(results):
-                        urls.append(results[idx].url)
-                except ValueError:
-                    pass
-            if fact:
-                notes.append(Note(
-                    fact=fact, sources=urls, query=query, target_q=target_q or query,
-                ))
-        return notes
+            if note.fact in existing:  # 机械兜底：与已有发现完全相同的丢弃
+                continue
+            existing.add(note.fact)
+            new_notes.append(note)
+        return new_notes
+
+    @staticmethod
+    def _parse_observe_line(
+        line: str, results: list[SearchResult], query: str, target_q: str,
+    ) -> Note | None:
+        """解析一行 observe 输出；垃圾行 / 无真实来源的行返回 None。
+
+        硬规则：没有 `|` 分隔、或来源序号全部无效的行一律丢弃 ——
+        "[1]"、"关键信息"、"---" 这类残留不再可能混进 notes。
+        """
+        line = line.strip()
+        if not line or line.upper().startswith("SKIP"):
+            return None
+        parts = [p.strip() for p in line.split("|")]
+        fact, idxes = parts[0], parts[1] if len(parts) >= 2 else ""
+        if not fact or not idxes:
+            return None  # 没有来源序号 = 不是合法输出
+        fact = _clean_fact(fact)
+        if not fact:
+            return None
+        urls: list[str] = []
+        snippets: list[str] = []
+        for idx_str in idxes.split(","):
+            try:
+                idx = int(idx_str.strip()) - 1  # 编号 1 起步，转回 0 基索引
+                if 0 <= idx < len(results):
+                    urls.append(results[idx].url)
+                    snippets.append(results[idx].snippet or "")
+            except ValueError:
+                pass
+        if not urls:
+            return None  # 序号全部无效 → 垃圾行
+        return Note(
+            fact=fact, sources=urls, snippets=snippets,
+            query=query, target_q=target_q or query,
+        )
 
     # ---- 日志 ----
 
