@@ -55,6 +55,29 @@ class Clarifier:
                 ans = ""   # 非交互环境（管道/CI）：跳过，不阻塞
             if ans:
                 answers.append((q["question"], ans))
+        return self._merge(goal, answers)
+
+    def enrich_with_answers(
+        self, goal: str, questions: list[dict], answers: list[dict],
+    ) -> str:
+        """服务化入口：把前端提交的答案合并进 goal（无 input，不阻塞）。
+
+        answers 形如 [{"question": "...", "answer": "..."}]；未回答的问题直接忽略。
+        """
+        by_question = {
+            str(a.get("question", "")): str(a.get("answer", "") or "").strip()
+            for a in answers or []
+        }
+        collected: list[tuple[str, str]] = []
+        for q in questions:
+            ans = by_question.get(q["question"], "")
+            if ans:
+                collected.append((q["question"], ans))
+        return self._merge(goal, collected)
+
+    @staticmethod
+    def _merge(goal: str, answers: list[tuple[str, str]]) -> str:
+        """把 Q&A 拼成【补充说明】追加到 goal。"""
         if not answers:
             return goal
         lines = "\n".join(f"- {qq} → {aa}" for qq, aa in answers)

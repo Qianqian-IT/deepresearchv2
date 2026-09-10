@@ -1,0 +1,34 @@
+# =============================================================================
+# Ingress：HTTPS + SSE 长连接适配
+#
+# 关键点（否则实时进度会被网关掐断）：
+#   - proxy-read-timeout 必须远大于 SSE 心跳间隔（默认 60s 太短）
+#   - proxy-buffering 必须 off，否则事件被缓冲、前端看不到"边跑边出"
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dr-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-body-size: "8m"
+    # 若启用 TLS 自动签发：
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: research.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: dr-api
+                port:
+                  number: 80
+  # tls:
+  #   - hosts: [research.example.com]
+  #     secretName: dr-tls

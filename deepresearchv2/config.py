@@ -1,4 +1,9 @@
-"""全局配置：预算、阈值、LLM 供应商。
+"""全局配置：预算、阈值、LLM 供应商默认值。
+
+安全约定（重要）：
+- 本文件 **不允许** 出现任何明文 API key。
+- 所有密钥一律从环境变量读取（服务层由租户 BYOK 显式注入，见 app/services/research_runner.py）。
+- 这里只保留"非机密"的默认值：base_url / model / 温度 / 超时 / 重试次数。
 
 所有数字都可以根据实际效果调，这里给的是合理的默认值。
 """
@@ -28,23 +33,28 @@ FARM_DOMAINS = {                     # 已知转载农场（域名只能粗筛�
 FRESHNESS_DAYS = 365                 # Tavily 时效过滤：只返回最近 N 天（0=今天，-1=关闭）
 
 # --- LLM 相关 ---
-# 单一真源：用 LLM_PROVIDER 决定走哪一套配置，避免 OPENAI_* / DEEPSEEK_* 同时存在打架。
+# 单一真源：用 LLM_PROVIDER 决定走哪一套默认值，避免 OPENAI_* / DEEPSEEK_* 同时存在打架。
 # 可选值："deepseek" / "openai"
+# 注意：这是一个"默认值"，服务层可被租户 BYOK 配置覆盖（provider/model/base_url 全链路可配）。
 LLM_PROVIDER = "deepseek"
 LLM_TEMPERATURE = 0.2        # 调研类任务要低温度，减少幻觉
 
-# DeepSeek（OpenAI 兼容协议）
-# key 优先取环境变量，环境变量没设时用下方直接写死的值（方便本地调试）
+# 环境变量名（不是密钥本身，只是"去哪里找密钥"）
 DEEPSEEK_API_KEY_ENV = "DEEPSEEK_API_KEY"
-DEEPSEEK_API_KEY = "sk-61ab2eb088b34e4abc59639b1d98c178"              # 直接填 key，例如 "sk-xxxxxxxxxxxxxxxx"
+OPENAI_API_KEY_ENV = "OPENAI_API_KEY"
+TAVILY_API_KEY_ENV = "TAVILY_API_KEY"
+
+# DeepSeek（OpenAI 兼容协议）—— 非机密默认值，base_url 可改为企业内网网关地址
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"
-DEEPSEEK_MODEL = "deepseek-v4-pro"   # V3 对外的对话模型；如用 V4 可改为 "deepseek-v4-flash"
+DEEPSEEK_MODEL = "deepseek-v4-pro"
 
 # OpenAI（备用）
-OPENAI_API_KEY_ENV = "OPENAI_API_KEY"
-OPENAI_API_KEY = ""                # 直接填 key，例如 "sk-xxxxxxxxxxxxxxxx"
 OPENAI_BASE_URL = "https://api.openai.com/v1"
 OPENAI_MODEL = "gpt-4o-mini"
 
-# Tavily 联网搜索
-TAVILY_API_KEY = "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"                # 直接填 key，例如 "tvly-xxxxxxxxxxxxxxxx"
+# --- 调用可靠性（服务化后外部依赖抖动需要兜底） ---
+LLM_TIMEOUT_SECONDS = 120    # 单次 LLM 调用超时（调研场景单次生成可能较慢，给足）
+LLM_MAX_RETRIES = 3          # 失败重试次数（指数退避）
+LLM_RETRY_BACKOFF = 1.5      # 退避基数：第 n 次重试等待 backoff ** n 秒
+SEARCH_TIMEOUT_SECONDS = 30  # Tavily 调用超时
+SEARCH_MAX_RETRIES = 3

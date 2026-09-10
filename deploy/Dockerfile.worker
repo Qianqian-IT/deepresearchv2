@@ -1,0 +1,40 @@
+# =============================================================================
+# Celery Worker 镜像（多阶段构建）
+#   构建：docker build -f deploy/Dockerfile.worker -t dr-worker .
+#   扩缩容：docker compose up -d --scale worker=4
+# =============================================================================
+
+FROM python:3.12-slim AS builder
+
+ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
+WORKDIR /build
+
+COPY deepresearchv2/requirements.txt ./requirements.txt
+RUN python -m venv /opt/venv \
+ && /opt/venv/bin/pip install --upgrade pip \
+ && /opt/venv/bin/pip install -r requirements.txt
+
+FROM python:3.12-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/opt/venv/bin:$PATH"
+
+RUN useradd --create-home --uid 10001 appuser
+
+WORKDIR /app
+COPY --from=builder /opt/venv /opt/venv
+
+COPY app ./app
+COPY deepresearchv2 ./deepresearchv2
+COPY alembic ./alembic
+COPY alembic.ini ./
+
+RUN chown -R appuser:appuser /app
+USER appuser
+
+# 并发度用环境变量控制，方便不同规格的机器复用同一镜像
+ENV WORKER_CONCURRENCY=4
+
+# 长任务场景：prefetch=1 由 celery_app 的配置保证；-O fair 让各 worker 均衡领任务
+CMD ["sh", "-c", "exec celery -A app.workers.celery_app:celery_app worker -Q research -c ${WORKER_CONCURRENCY} -O fair --loglevel=INFO"]

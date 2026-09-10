@@ -3,3 +3,23 @@ __pycache__/
 findings/
 report.md
 report.observations.json
+
+# ---- 密钥与本地配置（严禁提交）----
+.env
+.env.local
+*.pem
+*.key
+
+# ---- 运行产物 ----
+data/
+storage/
+*.observations.json
+out.md
+
+# ---- 工具 ----
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.codebuddy/

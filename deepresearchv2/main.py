@@ -83,6 +83,20 @@ def main() -> int:
         f"📊 统计：ReAct {final['steps']} 步 ｜ 搜索 {final['searches']} 次 ｜ "
         f"结果 {len(final['all_results'])} 条 ｜ 发现 {len(final['notes'])} 条"
     )
+    usage = llm.usage_summary()
+    if usage["total_calls"]:
+        print(
+            f"🔢 LLM 调用 {usage['total_calls']} 次 ｜ "
+            f"输入 {usage['total_input_tokens']:,} tokens ｜ "
+            f"输出 {usage['total_output_tokens']:,} tokens ｜ "
+            f"合计 {usage['total_tokens']:,} tokens"
+        )
+        print("   -- 各节点明细 --")
+        for c in usage["per_call"]:
+            print(
+                f"   · {c['hint']:<20} 输入 {c['input_tokens']:>5} ｜ "
+                f"输出 {c['output_tokens']:>5} ｜ prompt {c['prompt_chars']:,} 字符"
+            )
     if final["gaps"]:
         print("⚠️ 预算内未完全覆盖的缺口：")
         for g in final["gaps"]:

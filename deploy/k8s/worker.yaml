@@ -1,0 +1,50 @@
+# =============================================================================
+# Worker：调研执行池（CPU 密集度低、IO 等待多，副本数按并发任务量调）
+#   调研单任务耗时以分钟计，扩副本是最直接的吞吐手段。
+#   注意：worker 是「有状态」的（长任务），所以用较长的 terminationGracePeriodSeconds
+#   让正在跑的任务有机会收尾，而不是被 SIGKILL 打断。
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dr-worker
+  labels: { app: dr-worker }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: dr-worker }
+  template:
+    metadata:
+      labels: { app: dr-worker }
+    spec:
+      terminationGracePeriodSeconds: 600   # 等长任务收尾（> 单任务超时更稳妥）
+      containers:
+        - name: worker
+          image: dr-worker:latest
+          env:
+            - name: APP_ENV
+              value: prod
+            - name: WORKER_CONCURRENCY
+              value: "4"
+          envFrom:
+            - secretRef: { name: dr-secrets }
+          resources:
+            requests: { cpu: "500m", memory: "1Gi" }
+            limits: { cpu: "2", memory: "2Gi" }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: dr-worker
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: dr-worker
+  minReplicas: 2
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 75 }

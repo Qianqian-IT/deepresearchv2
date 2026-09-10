@@ -6,7 +6,7 @@
 """
 
 from .clarify import Clarifier
-from .graph import build_research_graph, initial_state
+from .graph import ResearchAborted, build_research_graph, initial_state
 from .llm import LLMClient
 from .planner import Planner, PlanQuery, ResearchPlan
 from .report_writer import ReportWriter
@@ -24,6 +24,7 @@ __all__ = [
     "Note",
     "SearchTool",
     "SearchResult",
+    "ResearchAborted",
     "build_research_graph",
     "initial_state",
 ]

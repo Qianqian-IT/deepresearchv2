@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import json
 import operator
-from typing import Annotated, TypedDict
+from typing import Annotated, Any, Callable, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
@@ -83,9 +83,19 @@ def _gaps_of(uncovered: list) -> list[dict]:
 def _planner_node(planner: Planner, log) -> "callable":
     def node(state: ResearchState) -> dict:
         plan = planner.plan(state["goal"])
-        log(f"📋 研究计划（主题：{plan.topic}）")
+        log(f"📋 研究计划（主题：{plan.topic}）", stage="planner")
         for i, q in enumerate(plan.questions, 1):
-            log(f"   {i}. 子问题: {q.question}  q={q.q!r}")
+            log(f"   {i}. 子问题: {q.question}  q={q.q!r}", stage="planner")
+        log(
+            "研究计划已生成",
+            stage="planner",
+            payload={
+                "topic": plan.topic,
+                "questions": [
+                    {"question": q.question, "q": q.q} for q in plan.questions
+                ],
+            },
+        )
         return {"plan": plan}
     return node
 
@@ -101,7 +111,7 @@ def _think_node(researcher: Researcher, log) -> "callable":
 
         # 闸门 2：预算兜底，到步数上限强制收工
         if steps > config.MAX_REACT_STEPS:
-            log(f"[think] 达到最大步数 {config.MAX_REACT_STEPS}，强制收工。")
+            log(f"[think] 达到最大步数 {config.MAX_REACT_STEPS}，强制收工。", stage="think")
             return {
                 "steps": steps, "query": "", "done": True,
                 "covered": not uncovered, "gaps": _gaps_of(uncovered),
@@ -114,15 +124,15 @@ def _think_node(researcher: Researcher, log) -> "callable":
             # 闸门 1：还有子问题没有发现且预算有剩余 → 不许收工，机械补搜它的计划词
             fill = next((pq for pq in uncovered if pq.q not in done), None)
             if fill:
-                log(f"[think] FINISH 被闸门拦截（子问题还缺发现），机械补搜 {fill.q!r}")
+                log(f"[think] FINISH 被闸门拦截（子问题还缺发现），机械补搜 {fill.q!r}", stage="think")
                 return {
                     "steps": steps, "query": fill.q, "target_q": fill.q,
                     "done": False, "gaps": _gaps_of(uncovered),
                 }
             if uncovered:
-                log(f"[think] 无可搜索项（{len(uncovered)} 个子问题已尽力），收工。")
+                log(f"[think] 无可搜索项（{len(uncovered)} 个子问题已尽力），收工。", stage="think")
             else:
-                log("[think] ✅ 所有子问题都有发现支撑，收工。")
+                log("[think] ✅ 所有子问题都有发现支撑，收工。", stage="think")
             return {
                 "steps": steps, "query": "", "done": True,
                 "covered": not uncovered, "gaps": _gaps_of(uncovered),
@@ -138,16 +148,16 @@ def _think_node(researcher: Researcher, log) -> "callable":
             # think 空转（解析失败 / 重复词）：兜底走还没搜过的计划项
             pending = [pq for pq in plan.questions if pq.q not in done]
             if not pending:
-                log("[think] 无可搜索项，收工。")
+                log("[think] 无可搜索项，收工。", stage="think")
                 return {
                     "steps": steps, "query": "", "done": True,
                     "covered": not uncovered, "gaps": _gaps_of(uncovered),
                 }
             pq = pending[0]
             query, target_q = pq.q, pq.q
-            log(f"[think] think 空转，兜底跑计划项 {query!r}")
+            log(f"[think] think 空转，兜底跑计划项 {query!r}", stage="think")
         else:
-            log(f"[think] → 搜索 {query!r}（服务子问题 {target_q!r}）")
+            log(f"[think] → 搜索 {query!r}（服务子问题 {target_q!r}）", stage="think")
         return {"steps": steps, "query": query, "target_q": target_q, "done": False}
     return node
 
@@ -168,14 +178,22 @@ def _act_node(search_tool: SearchTool, log) -> "callable":
         )
         if not results and domains:
             # 白名单建议不准（空结果）→ 降级为不限域名重搜，保底不丢
-            log("[act] 权威白名单无结果，降级为不限域名重搜")
+            log("[act] 权威白名单无结果，降级为不限域名重搜", stage="act")
             results = search_tool.search(query, topic_domains=topic_domains)
-        log(f"[act] Tavily 返回 {len(results)} 条（{query!r}）")
+        log(f"[act] Tavily 返回 {len(results)} 条（{query!r}）", stage="act")
         if results:
             tiers = [r.source_tier for r in results]
             log(
                 f"[act] 信源分层: 权威 {tiers.count(1)} 条 / "
-                f"普通 {tiers.count(2)} 条 / 农场 {tiers.count(3)} 条"
+                f"普通 {tiers.count(2)} 条 / 农场 {tiers.count(3)} 条",
+                stage="act",
+                payload={
+                    "query": query,
+                    "count": len(results),
+                    "tier1": tiers.count(1),
+                    "tier2": tiers.count(2),
+                    "tier3": tiers.count(3),
+                },
             )
         return {
             "results": results,                     # observe 消费（瞬时）
@@ -186,26 +204,57 @@ def _act_node(search_tool: SearchTool, log) -> "callable":
     return node
 
 
-def _append_findings_json(query: str, notes: list[Note], results: list[SearchResult],
-                          target_q: str = "") -> None:
-    """把 observe 筛选保留的发现追加到 findings/research-findings.jsonl（JSONL 格式）。
+ProgressFn = Callable[[dict], None]
+FindingsSink = Callable[[dict], None]
 
-    增量追加：每次 observe 后立即落盘，中断也不丢。每行一条 JSON 记录。
+
+class ResearchAborted(Exception):
+    """由进度回调抛出以中止调研（服务层用于「用户取消任务」）。
+
+    只有这个异常会穿透 `_Emitter` 的保护；其它异常一律吞掉，
+    保证"进度通道出问题不影响调研主流程"。
     """
-    if not notes:
-        return
-    from pathlib import Path
 
-    path = Path("findings") / "research-findings.jsonl"
-    path.parent.mkdir(parents=True, exist_ok=True)
+
+class _Emitter:
+    """节点输出的双通道出口：本地日志 + 外部进度回调。
+
+    服务化后 `progress` 由 worker 注入（写 Redis pub/sub + task_events 表）；
+    CLI 场景不传，退化为纯 print，行为与改造前一致。
+    """
+
+    def __init__(self, verbose: bool, progress: ProgressFn | None = None):
+        self.verbose = verbose
+        self.progress = progress
+
+    def __call__(
+        self, message: str, *, stage: str = "", level: str = "info",
+        payload: dict | None = None,
+    ) -> None:
+        if self.verbose:
+            print(message)
+        if self.progress:
+            try:
+                self.progress({
+                    "stage": stage, "level": level,
+                    "message": message, "payload": payload,
+                })
+            except ResearchAborted:
+                raise
+            except Exception:   # noqa: BLE001 - 进度回调失败绝不能打断调研
+                pass
+
+
+def _build_findings_record(
+    query: str, notes: list[Note], results: list[SearchResult], target_q: str = "",
+) -> dict:
+    """把一次 observe 的保留发现组装成一条可落库/落盘的记录。"""
     url2res = {r.url: r for r in results}
-
     note_records = []
     for n in notes:
         sources_detail = []
         for i, url in enumerate(n.sources):
             r = url2res.get(url)
-            snippet = ""
             if r:
                 snippet = (n.snippets[i] if i < len(n.snippets) else r.snippet or "")
                 snippet = snippet.replace("\n", " ")
@@ -223,24 +272,38 @@ def _append_findings_json(query: str, notes: list[Note], results: list[SearchRes
             "target_q": n.target_q,
             "sources": sources_detail,
         })
+    return {"query": query, "target_q": target_q or None, "notes": note_records}
 
-    record = {"query": query, "target_q": target_q or None, "notes": note_records}
+
+def _local_findings_jsonl_sink(record: dict) -> None:
+    """默认 sink：追加到 CWD 下 findings/research-findings.jsonl（CLI 兼容行为）。
+
+    服务层会注入按 task_id 隔离的 sink，避免多副本/多任务互相串写。
+    """
+    if not record.get("notes"):
+        return
+    from pathlib import Path
+
+    path = Path("findings") / "research-findings.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
-def _observe_node(researcher: Researcher, log) -> "callable":
+def _observe_node(researcher: Researcher, log, findings_sink: FindingsSink) -> "callable":
     def node(state: ResearchState) -> dict:
         new_notes = researcher.observe(
             state["query"], state["results"], state.get("target_q", ""),
             state["notes"],  # 已有发现：observe 里用于跨轮去重
         )
         for n in new_notes:
-            log(f"[observe] 保留: {n.fact[:60]}")
+            log(f"[observe] 保留: {n.fact[:60]}", stage="observe", payload={"fact": n.fact})
         if not new_notes:
-            log("[observe] 本轮无有价值信息，全部过滤")
-        # 筛选保留的发现增量落盘 findings/research-findings.jsonl
-        _append_findings_json(state["query"], new_notes, state["results"], state.get("target_q", ""))
+            log("[observe] 本轮无有价值信息，全部过滤", stage="observe")
+        # 筛选保留的发现经 sink 落库/落盘（按任务隔离由调用方决定）
+        findings_sink(_build_findings_record(
+            state["query"], new_notes, state["results"], state.get("target_q", ""),
+        ))
         # 每次 observe 的完整记录都进 state.observations，落盘时一条不丢
         record = {"query": state["query"], "notes": new_notes}
         return {"notes": new_notes, "observations": [record]}
@@ -253,10 +316,10 @@ def _analyze_node(analyzer: Analyzer, log) -> "callable":
         plan = state["plan"]
         notes = state["notes"]
         if not notes:
-            log("[analyze] 无发现，跳过分析")
+            log("[analyze] 无发现，跳过分析", stage="analyze")
             return {"analysis": {}}
 
-        log(f"[analyze] 开始分析 {len(plan.questions)} 个子问题（{len(notes)} 条发现）...")
+        log(f"[analyze] 开始分析 {len(plan.questions)} 个子问题（{len(notes)} 条发现）...", stage="analyze")
         results = analyzer.analyze(state["goal"], plan, notes)
 
         # 转成可序列化 dict 存进 state
@@ -280,9 +343,19 @@ def _analyze_node(analyzer: Analyzer, log) -> "callable":
             log(
                 f"[analyze] {ar.search_term}: "
                 f"{rel}/{total} 相关, {len(ar.merged_insights)} 洞察, "
-                f"{len(ar.conflicts)} 冲突, {len(ar.missing_info)} 缺口"
+                f"{len(ar.conflicts)} 冲突, {len(ar.missing_info)} 缺口",
+                stage="analyze",
+                payload={
+                    "search_term": ar.search_term,
+                    "relevant": rel,
+                    "total": total,
+                    "insights": len(ar.merged_insights),
+                    "conflicts": len(ar.conflicts),
+                    "gaps": len(ar.missing_info),
+                },
             )
 
+        log("分析完成", stage="analyze", payload={"sub_questions": len(serialized)})
         return {"analysis": serialized}
     return node
 
@@ -292,7 +365,7 @@ def _report_node(writer: ReportWriter, log) -> "callable":
         """消费 state.analysis + state.plan + state.goal，生成最终报告。"""
         analysis = state.get("analysis", {})
         if not analysis:
-            log("[report] 无分析结果，跳过报告生成")
+            log("[report] 无分析结果，跳过报告生成", stage="report")
             return {"report": writer._empty_report(state["goal"])}
 
         plan_raw = state["plan"]
@@ -305,12 +378,12 @@ def _report_node(writer: ReportWriter, log) -> "callable":
             ] if plan_raw and hasattr(plan_raw, "questions") else [],
         }
 
-        log("[report] 正在生成最终调研报告...")
+        log("[report] 正在生成最终调研报告...", stage="report")
         report_md = writer.write(state["goal"], plan_dict, analysis)
         # 追加附录：分析覆盖度、原始发现
         appendix = _build_appendix(state)
         report_md = report_md.rstrip() + "\n\n" + appendix
-        log("[report] 报告生成完成")
+        log("[report] 报告生成完成", stage="report", payload={"chars": len(report_md)})
         return {"report": report_md}
     return node
 
@@ -376,19 +449,27 @@ def build_research_graph(
     analyzer: Analyzer | None = None,
     report_writer: ReportWriter | None = None,
     verbose: bool = True,
+    progress: ProgressFn | None = None,
+    findings_sink: FindingsSink | None = None,
 ) -> CompiledStateGraph:
-    """组装并编译完整的调研图：planner → think ↔ (act → observe)，覆盖后 → analyze → report → END。"""
+    """组装并编译完整的调研图：planner → think ↔ (act → observe)，覆盖后 → analyze → report → END。
+
+    扩展点（服务化用，CLI 不传即保持原行为）：
+    - progress:       进度回调，收到 {stage, level, message, payload}
+    - findings_sink:  发现落库/落盘钩子；默认写 CWD 下 findings/（按任务隔离由调用方注入）
+    """
     planner = planner or Planner(llm)
     researcher = researcher or Researcher(llm, verbose=verbose)
     analyzer = analyzer or Analyzer(llm)
     report_writer = report_writer or ReportWriter(llm)
-    log = (lambda msg: print(msg)) if verbose else (lambda msg: None)
+    log = _Emitter(verbose=verbose, progress=progress)
+    sink: FindingsSink = findings_sink or _local_findings_jsonl_sink
 
     g = StateGraph(ResearchState)
     g.add_node("planner", _planner_node(planner, log))
     g.add_node("think", _think_node(researcher, log))
     g.add_node("act", _act_node(search_tool, log))
-    g.add_node("observe", _observe_node(researcher, log))
+    g.add_node("observe", _observe_node(researcher, log, sink))
     g.add_node("analyze", _analyze_node(analyzer, log))
     g.add_node("report", _report_node(report_writer, log))
 

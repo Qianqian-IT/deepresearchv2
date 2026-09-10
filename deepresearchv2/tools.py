@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import os
+import time
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
@@ -57,13 +58,18 @@ class SearchResult:
 
 
 class SearchTool:
-    """对外搜索的统一入口，内部走 Tavily。"""
+    """对外搜索的统一入口，内部走 Tavily。
+
+    密钥只来自「显式传入」或「环境变量」，**没有内置兜底 key**：
+    服务层由租户 BYOK 显式传入，CLI 场景由用户 export 环境变量。
+    """
 
     def __init__(self, tavily_api_key: str | None = None):
-        self.key = tavily_api_key or os.environ.get("TAVILY_API_KEY") or config.TAVILY_API_KEY
+        self.key = tavily_api_key or os.environ.get(config.TAVILY_API_KEY_ENV, "")
         if not self.key:
             raise RuntimeError(
-                "缺少 TAVILY_API_KEY。请先 `export TAVILY_API_KEY=tvly-xxx` 再启动。"
+                f"缺少 {config.TAVILY_API_KEY_ENV}。"
+                "服务层请通过租户 BYOK 配置注入；CLI 请先 `export TAVILY_API_KEY=tvly-xxx` 再启动。"
             )
 
     def search(
@@ -98,7 +104,21 @@ class SearchTool:
             params["days"] = days
 
         client = TavilyClient(api_key=self.key)
-        resp = client.search(**params)
+        last_err: Exception | None = None
+        resp = None
+        for attempt in range(config.SEARCH_MAX_RETRIES):
+            try:
+                resp = client.search(**params)
+                break
+            except Exception as e:   # noqa: BLE001 - 网络/限流统一重试
+                last_err = e
+                if attempt < config.SEARCH_MAX_RETRIES - 1:
+                    time.sleep(config.LLM_RETRY_BACKOFF ** attempt)
+        if resp is None:
+            raise RuntimeError(
+                f"Tavily 搜索失败（{query!r}，已重试 {config.SEARCH_MAX_RETRIES} 次）："
+                f"{type(last_err).__name__}: {last_err}"
+            ) from last_err
 
         results = [
             SearchResult(

@@ -125,6 +125,7 @@ class ReportWriter:
                 # 回退：尝试用 question 文本匹配
                 result = analysis.get(pq.get("question", ""), {})
 
+            q_text = pq.get("question", "") or pq.get("q", "")
             items.append({
                 "question": q_text,
                 "merged_insights": result.get("merged_insights", []),

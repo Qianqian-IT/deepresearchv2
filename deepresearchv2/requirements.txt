@@ -1,11 +1,45 @@
 # deepresearchv2 依赖
 #
-# 这些都是运行必须的（缺 key 直接报错，不走 fallback）。
+# 分组说明：
+#   [agent] 调研 agent 本体（CLI 只需这三样即可运行）
+#   [api]   FastAPI 服务层
+#   [data]  PostgreSQL / Redis / 迁移
+#   [sec]   认证与 BYOK 加密
+#   [obs]   可观测
 #
-#   - 大模型调用：    pip install openai
-#   - 联网搜索：      pip install tavily-python
-#   - 流程编排：      pip install langgraph
+# 安装全部：pip install -r deepresearchv2/requirements.txt
 
+# --- agent 本体（缺 key 直接报错，不走 fallback）---
 openai>=1.0
 tavily-python>=0.3
 langgraph>=0.2
+
+# --- API 服务层 ---
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pydantic>=2.6
+pydantic-settings>=2.2
+email-validator>=2.0
+sse-starlette>=2.1
+python-multipart>=0.0.9
+
+# --- 数据层 ---
+sqlalchemy[asyncio]>=2.0
+asyncpg>=0.29          # API 侧异步驱动
+psycopg[binary]>=3.1   # worker 侧同步驱动
+greenlet>=3.0
+alembic>=1.13
+redis>=5.0
+celery[redis]>=5.3
+
+# --- 认证与加密（BYOK）---
+PyJWT>=2.8
+bcrypt>=4.0
+cryptography>=42.0
+
+# --- 可观测 ---
+structlog>=24.1
+prometheus-client>=0.20
+
+# --- 产物存储（storage_backend=s3 时启用，本地 db 模式可不装）---
+boto3>=1.34
